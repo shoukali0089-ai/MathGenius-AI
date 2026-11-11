@@ -16,3 +16,43 @@ body {
   min-width: 320px;
   min-height: 100vh;
 }
+
+.solve-loading {
+  margin-top: 18px;
+  padding: 14px;
+  border-radius: 10px;
+  background: #eef4ff;
+  color: #2456a6;
+}
+
+.solve-error {
+  margin-top: 20px;
+  padding: 18px;
+  border-radius: 12px;
+  border: 1px solid #efb7b7;
+  background: #fff1f1;
+  color: #a52222;
+}
+
+.solution-answer {
+  margin: 18px 0;
+  padding: 16px;
+  border-radius: 10px;
+  background: #eef8f1;
+}
+
+.solution-answer li {
+  margin-top: 8px;
+  font-weight: 700;
+}
+
+.verification-status {
+  margin-top: 14px;
+  font-weight: 700;
+  color: #168044;
+}
+
+.solve-button:disabled {
+  opacity: 0.65;
+  cursor: not-allowed;
+}

@@ -2,19 +2,61 @@
 import { useState } from "react";
 import "./App.css";
 
+type SolveResponse = {
+  success: boolean;
+  type: string;
+  problem: string;
+  answer: string | string[];
+  verified: boolean;
+  message: string;
+};
+
 function App() {
   const [equation, setEquation] = useState("");
   const [category, setCategory] = useState("Auto Detect");
   const [language, setLanguage] = useState("English");
-  const [result, setResult] = useState(false);
+  const [result, setResult] = useState<SolveResponse | null>(null);
+  const [error, setError] = useState("");
+  const [loading, setLoading] = useState(false);
 
-  function handleSolve() {
+  async function handleSolve() {
     if (!equation.trim()) {
-      alert("Please enter a mathematical equation first.");
+      setError("Please enter a mathematical equation first.");
+      setResult(null);
       return;
     }
 
-    setResult(true);
+    setLoading(true);
+    setError("");
+    setResult(null);
+
+    try {
+      const response = await fetch("/api/solve", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          problem: equation.trim(),
+        }),
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.detail || "Unable to solve this problem.");
+      }
+
+      setResult(data as SolveResponse);
+    } catch (err) {
+      setError(
+        err instanceof Error
+          ? err.message
+          : "Something went wrong. Please try again."
+      );
+    } finally {
+      setLoading(false);
+    }
   }
 
   return (
@@ -99,29 +141,72 @@ function App() {
             id="equation"
             value={equation}
             onChange={(e) => setEquation(e.target.value)}
-            placeholder="Example: x² + 5x + 6 = 0"
+            placeholder="Example: x^2 + 5*x + 6 = 0"
             rows={4}
           />
 
           <div className="input-hint">
-            Type your equation using standard mathematical notation.
+            Use * for multiplication and ^ for powers.
+            Example: x^2 + 5*x + 6 = 0
           </div>
 
-          <button className="solve-button" onClick={handleSolve}>
-            ✦ Solve Mathematics
+          <button
+            className="solve-button"
+            onClick={handleSolve}
+            disabled={loading}
+          >
+            {loading ? "Solving..." : "✦ Solve Mathematics"}
           </button>
 
+          {loading && (
+            <div className="solve-loading" role="status">
+              Calculating your answer. Please wait...
+            </div>
+          )}
+
+          {error && (
+            <div className="solve-error" role="alert">
+              <h3>Unable to solve</h3>
+              <p>{error}</p>
+            </div>
+          )}
+
           {result && (
-            <div className="result-box">
-              <h3>Question received!</h3>
-              <p>{equation}</p>
+            <div className="result-box" aria-live="polite">
+              <h3>Solution</h3>
+
               <p>
-                Your selected category: {category}
+                <strong>Question:</strong> {equation}
               </p>
-              <small>
-                Mathematical solving engine integration is
-                coming in the next development phase.
-              </small>
+
+              <p>
+                <strong>Category selected:</strong> {category}
+              </p>
+
+              <div className="solution-answer">
+                <strong>Answer:</strong>
+                {Array.isArray(result.answer) ? (
+                  result.answer.length > 0 ? (
+                    <ul>
+                      {result.answer.map((answer, index) => (
+                        <li key={index}>{answer}</li>
+                      ))}
+                    </ul>
+                  ) : (
+                    <p>No solutions found.</p>
+                  )
+                ) : (
+                  <p>{result.answer}</p>
+                )}
+              </div>
+
+              <p>{result.message}</p>
+
+              <div className="verification-status">
+                {result.verified
+                  ? "✓ Mathematical verification passed"
+                  : "Verification not confirmed"}
+              </div>
             </div>
           )}
         </section>
