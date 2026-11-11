@@ -102,12 +102,13 @@ def format_value(value) -> str:
 
 
 def build_equation_steps(lhs, rhs, solutions):
-    """Create genuine steps for supported linear and quadratic equations."""
+    """Create genuine steps for supported linear, quadratic and cubic equations."""
 
     steps = []
     polynomial = sp.Poly(sp.expand(lhs - rhs), x)
+    degree = polynomial.degree()
 
-    if polynomial.degree() == 1:
+    if degree == 1:
         a, b = polynomial.all_coeffs()
         solution = sp.simplify(-b / a)
 
@@ -125,7 +126,7 @@ def build_equation_steps(lhs, rhs, solutions):
 
         return steps
 
-    if polynomial.degree() == 2:
+    if degree == 2:
         a, b, c = polynomial.all_coeffs()
 
         steps.append(
@@ -156,6 +157,7 @@ def build_equation_steps(lhs, rhs, solutions):
                     factor_poly = sp.Poly(factor, x)
                     factor_a, factor_b = factor_poly.all_coeffs()
                     root = sp.simplify(-factor_b / factor_a)
+
                     steps.append(
                         f"Solve {sp.sstr(factor)} = 0: x = "
                         f"{format_value(root)}"
@@ -182,8 +184,221 @@ def build_equation_steps(lhs, rhs, solutions):
 
         return steps
 
-    return []
+   
+    
+   
+    if degree == 3:
+        standard = polynomial.as_expr()
+        factorized = sp.factor(standard)
+        factor_data = sp.factor_list(standard)[1]
 
+        total_degree = sum(
+            sp.Poly(factor, x).degree() * multiplicity
+            for factor, multiplicity in factor_data
+        )
+
+        # Case 1: All factors are linear
+        if total_degree == 3 and all(
+            sp.Poly(factor, x).degree() == 1
+            for factor, multiplicity in factor_data
+        ):
+            steps.append(
+                "Write the cubic equation in standard form: "
+                f"{sp.sstr(standard)} = 0"
+            )
+            steps.append(
+                f"Factorize the cubic: {sp.sstr(factorized)} = 0"
+            )
+            steps.append(
+                "Apply the zero-product property: set each distinct "
+                "linear factor equal to zero."
+            )
+
+            for factor, multiplicity in factor_data:
+                factor_poly = sp.Poly(factor, x)
+                factor_a, factor_b = factor_poly.all_coeffs()
+                root = sp.simplify(-factor_b / factor_a)
+
+                steps.append(
+                    f"Solve {sp.sstr(factor)} = 0: "
+                    f"x = {format_value(root)}"
+                )
+
+                if multiplicity > 1:
+                    steps.append(
+                        f"The factor {sp.sstr(factor)} occurs "
+                        f"{multiplicity} times. Therefore, "
+                        f"x = {format_value(root)} has "
+                        f"multiplicity {multiplicity}."
+                    )
+
+            return steps
+
+        # Case 2: One linear factor and one quadratic factor
+    
+        factor_degrees = [
+            sp.Poly(factor, x).degree()
+            for factor, multiplicity in factor_data
+        ]
+
+        if (
+            total_degree == 3
+            and sorted(factor_degrees) == [1, 2]
+            and all(
+                multiplicity == 1
+                for factor, multiplicity in factor_data
+            )
+        ):
+            linear_factor = next(
+                factor for factor, multiplicity in factor_data
+                if sp.Poly(factor, x).degree() == 1
+            )
+
+            quadratic_factor = next(
+                factor for factor, multiplicity in factor_data
+                if sp.Poly(factor, x).degree() == 2
+            )
+
+            factor_poly = sp.Poly(linear_factor, x)
+            factor_a, factor_b = factor_poly.all_coeffs()
+            linear_root = sp.simplify(-factor_b / factor_a)
+
+            a, b, c = sp.Poly(
+                quadratic_factor, x
+            ).all_coeffs()
+
+            discriminant = sp.simplify(b**2 - 4*a*c)
+
+            root_plus = sp.simplify(
+                (-b + sp.sqrt(discriminant)) / (2*a)
+            )
+
+            root_minus = sp.simplify(
+                (-b - sp.sqrt(discriminant)) / (2*a)
+            )
+
+            steps.append(
+                "Write the cubic equation in standard form: "
+                f"{sp.sstr(standard)} = 0"
+            )
+            steps.append(
+                f"Factorize the cubic: {sp.sstr(factorized)} = 0"
+            )
+            steps.append(
+                "Apply the zero-product property: set the "
+                "linear and quadratic factors equal to zero."
+            )
+            steps.append(
+                f"Solve {sp.sstr(linear_factor)} = 0: "
+                f"x = {format_value(linear_root)}"
+            )
+            steps.append(
+                f"For {sp.sstr(quadratic_factor)} = 0, "
+                f"identify a = {format_value(a)}, "
+                f"b = {format_value(b)}, "
+                f"c = {format_value(c)}."
+            )
+            steps.append(
+                f"Calculate the discriminant: "
+                f"D = {format_value(discriminant)}"
+            )
+            steps.append(
+                "Apply the quadratic formula: "
+                "x = (-b ± sqrt(D)) / (2a)."
+            )
+            steps.append(
+                "Simplify the quadratic roots: "
+                f"x = {format_value(root_plus)} "
+                f"or x = {format_value(root_minus)}."
+            )
+
+            return steps
+
+        factor_degrees = [
+            sp.Poly(factor, x).degree()
+            for factor, multiplicity in factor_data
+        ]
+
+        if (
+            total_degree == 3
+            and sorted(factor_degrees) == [1, 2]
+            and all(multiplicity == 1 for factor, multiplicity in factor_data)
+        ):
+            linear_factor = next(
+                factor for factor, multiplicity in factor_data
+                if sp.Poly(factor, x).degree() == 1
+            )
+
+            quadratic_factor = next(
+                factor for factor, multiplicity in factor_data
+                if sp.Poly(factor, x).degree() == 2
+            )
+
+            factor_poly = sp.Poly(linear_factor, x)
+            factor_a, factor_b = factor_poly.all_coeffs()
+            linear_root = sp.simplify(-factor_b / factor_a)
+
+            a, b, c = sp.Poly(
+                quadratic_factor, x
+            ).all_coeffs()
+
+            discriminant = sp.simplify(b**2 - 4*a*c)
+
+            root_plus = sp.simplify(
+                (-b + sp.sqrt(discriminant)) / (2*a)
+            )
+
+            root_minus = sp.simplify(
+                (-b - sp.sqrt(discriminant)) / (2*a)
+            )
+
+            steps.append(
+                "Write the cubic equation in standard form: "
+                f"{sp.sstr(standard)} = 0"
+            )
+
+            steps.append(
+                f"Factorize the cubic: {sp.sstr(factorized)} = 0"
+            )
+
+            steps.append(
+                "Apply the zero-product property: set the "
+                "linear and quadratic factors equal to zero."
+            )
+
+            steps.append(
+                f"Solve {sp.sstr(linear_factor)} = 0: "
+                f"x = {format_value(linear_root)}"
+            )
+
+            steps.append(
+                f"For {sp.sstr(quadratic_factor)} = 0, "
+                f"identify a = {format_value(a)}, "
+                f"b = {format_value(b)}, "
+                f"c = {format_value(c)}."
+            )
+
+            steps.append(
+                f"Calculate the discriminant: "
+                f"D = {format_value(discriminant)}"
+            )
+
+            steps.append(
+                "Apply the quadratic formula: "
+                "x = (-b ± sqrt(D)) / (2a)."
+            )
+
+            steps.append(
+                "Simplify the quadratic roots: "
+                f"x = {format_value(root_plus)} "
+                f"or x = {format_value(root_minus)}."
+            )
+
+            return steps
+
+
+
+    return []
 
 
 def build_equation_step_formulas(lhs, rhs, solutions):
@@ -266,9 +481,118 @@ def build_equation_step_formulas(lhs, rhs, solutions):
 
         return formulas
 
+    
+    
+    if degree == 3:
+        standard = polynomial.as_expr()
+        factorized = sp.factor(standard)
+        factor_data = sp.factor_list(standard)[1]
 
+        total_degree = sum(
+            sp.Poly(factor, x).degree() * multiplicity
+            for factor, multiplicity in factor_data
+        )
+
+        if total_degree == 3 and all(
+            sp.Poly(factor, x).degree() == 1
+            for factor, multiplicity in factor_data
+        ):
+            formulas = [
+                sp.latex(standard) + r" = 0",
+                sp.latex(factorized) + r" = 0",
+                r"\text{Set each distinct linear factor equal to zero}",
+            ]
+
+            for factor, multiplicity in factor_data:
+                factor_poly = sp.Poly(factor, x)
+                factor_a, factor_b = factor_poly.all_coeffs()
+                root = sp.simplify(-factor_b / factor_a)
+
+                formulas.append(
+                    sp.latex(factor)
+                    + r" = 0 \quad \Rightarrow \quad x = "
+                    + sp.latex(root)
+                )
+
+                if multiplicity > 1:
+                    formulas.append(
+                        r"\text{Multiplicity of } x = "
+                        + sp.latex(root)
+                        + r"\text{ is } "
+                        + str(multiplicity)
+                    )
+
+            return formulas
+
+        factor_degrees = [
+            sp.Poly(factor, x).degree()
+            for factor, multiplicity in factor_data
+        ]
+
+        if (
+            total_degree == 3
+            and sorted(factor_degrees) == [1, 2]
+            and all(multiplicity == 1 for factor, multiplicity in factor_data)
+        ):
+            linear_factor = next(
+                factor for factor, multiplicity in factor_data
+                if sp.Poly(factor, x).degree() == 1
+            )
+
+            quadratic_factor = next(
+                factor for factor, multiplicity in factor_data
+                if sp.Poly(factor, x).degree() == 2
+            )
+
+            factor_poly = sp.Poly(linear_factor, x)
+            factor_a, factor_b = factor_poly.all_coeffs()
+            linear_root = sp.simplify(-factor_b / factor_a)
+
+            a, b, c = sp.Poly(
+                quadratic_factor, x
+            ).all_coeffs()
+
+            discriminant = sp.simplify(b**2 - 4*a*c)
+
+            root_plus = sp.simplify(
+                (-b + sp.sqrt(discriminant)) / (2*a)
+            )
+
+            root_minus = sp.simplify(
+                (-b - sp.sqrt(discriminant)) / (2*a)
+            )
+
+            return [
+                sp.latex(standard) + r" = 0",
+
+                sp.latex(factorized) + r" = 0",
+
+                r"\text{Set the linear and quadratic factors equal to zero}",
+
+                sp.latex(linear_factor)
+                + r" = 0 \quad \Rightarrow \quad x = "
+                + sp.latex(linear_root),
+
+                sp.latex(quadratic_factor)
+                + r" = 0,\quad a = "
+                + sp.latex(a)
+                + r",\ b = "
+                + sp.latex(b)
+                + r",\ c = "
+                + sp.latex(c),
+
+                r"D = " + sp.latex(discriminant),
+
+                r"x = \frac{-b \pm \sqrt{D}}{2a}",
+
+                r"x = "
+                + sp.latex(root_plus)
+                + r"\quad \text{or}\quad x = "
+                + sp.latex(root_minus),
+            ]
 
     return []
+
 
 def solve_math(problem: str) -> dict:
     if not isinstance(problem, str):
@@ -291,7 +615,6 @@ def solve_math(problem: str) -> dict:
 
             if not left.strip() or not right.strip():
                 raise ValueError("Invalid equation.")
-
 
             lhs = parse_math_expression(left)
             rhs = parse_math_expression(right)
@@ -336,8 +659,8 @@ def solve_math(problem: str) -> dict:
 
             solutions = sp.solve(sp.Eq(lhs, rhs), x)
 
-
             answer = [format_value(item) for item in solutions]
+            answer_formulas = [sp.latex(item) for item in solutions]
 
             verified = bool(solutions) and all(
                 sp.simplify(lhs.subs(x, item) - rhs.subs(x, item)) == 0
@@ -355,6 +678,7 @@ def solve_math(problem: str) -> dict:
                 )
             except (sp.PolynomialError, ValueError, TypeError):
                 step_formulas = []
+
             detailed_steps_available = bool(steps) and (
                 len(steps) == len(step_formulas)
             )
@@ -364,6 +688,7 @@ def solve_math(problem: str) -> dict:
                 "type": "equation",
                 "problem": problem,
                 "answer": answer,
+                "answer_formulas": answer_formulas,
                 "steps": steps,
                 "step_formulas": step_formulas,
                 "verified": verified,

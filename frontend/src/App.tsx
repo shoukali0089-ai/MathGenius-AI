@@ -17,6 +17,7 @@ type SolveResponse = {
   type: string;
   problem: string;
   answer: string | string[];
+  answer_formulas?: string[];
   steps: string[];
   step_formulas?: string[];
   verified: boolean;
@@ -208,12 +209,12 @@ function App() {
     result.answer.length > 0 ? (
       <ul>
         {result.answer.map((answer, index) => (
-          <li key={index}>
-            <MathJax dynamic>
-              {`\\(${answer.replace(/\*/g, "\\cdot ").replace(/\^(\d+)/g, "^{$1}")}\\)`}
-            </MathJax>
-          </li>
-        ))}
+  <li key={index}>
+    <MathJax dynamic>
+      {`\\(${result.answer_formulas?.[index] ?? answer}\\)`}
+    </MathJax>
+  </li>
+))}
       </ul>
     ) : <p>No solutions found.</p>
   ) : (
