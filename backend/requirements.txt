@@ -1,3 +1,7 @@
+
 fastapi
 uvicorn
 sympy
+pytest
+httpx
+httpx2

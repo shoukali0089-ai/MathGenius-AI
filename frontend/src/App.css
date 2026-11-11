@@ -348,3 +348,30 @@ footer small {
     font-size: 26px;
   }
 }
+
+.solution-steps {
+  margin-top: 24px;
+  padding: 20px;
+  border: 1px solid rgba(100, 116, 139, 0.25);
+  border-radius: 12px;
+  background: rgba(100, 116, 139, 0.06);
+}
+
+.solution-steps h3 {
+  margin-top: 0;
+  margin-bottom: 16px;
+}
+
+.solution-steps ol {
+  padding-left: 24px;
+  margin-bottom: 0;
+}
+
+.solution-steps li {
+  padding: 10px 0;
+  line-height: 1.7;
+}
+
+.solution-steps li::marker {
+  font-weight: 700;
+}

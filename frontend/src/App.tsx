@@ -1,15 +1,28 @@
 
 import { useState } from "react";
+import { MathJax, MathJaxContext } from "better-react-mathjax";
 import "./App.css";
 
+const mathJaxConfig = {
+  tex: {
+    inlineMath: [["\\(", "\\)"]],
+    displayMath: [["\\[", "\\]"]],
+  },
+  options: {
+    skipHtmlTags: ["script", "noscript", "style", "textarea", "pre", "code"],
+  },
+};
 type SolveResponse = {
   success: boolean;
   type: string;
   problem: string;
   answer: string | string[];
+  steps: string[];
+  step_formulas?: string[];
   verified: boolean;
   message: string;
 };
+
 
 function App() {
   const [equation, setEquation] = useState("");
@@ -60,6 +73,8 @@ function App() {
   }
 
   return (
+    <MathJaxContext config={mathJaxConfig}>
+  <div className="app"></div>
     <div className="app">
       <header className="navbar">
         <a className="brand" href="#">
@@ -171,44 +186,81 @@ function App() {
             </div>
           )}
 
-          {result && (
-            <div className="result-box" aria-live="polite">
-              <h3>Solution</h3>
 
-              <p>
-                <strong>Question:</strong> {equation}
-              </p>
+{result && (
+  <div className="result-box" aria-live="polite">
+    <h3>Solution</h3>
 
-              <p>
-                <strong>Category selected:</strong> {category}
-              </p>
+   <p>
+  <strong>Question:</strong>{" "}
+  <MathJax dynamic>
+    {`\\(${result.problem.replace(/\*/g, "\\cdot ").replace(/\^(\d+)/g, "^{$1}")}\\)`}
+  </MathJax>
+</p>
 
-              <div className="solution-answer">
-                <strong>Answer:</strong>
-                {Array.isArray(result.answer) ? (
-                  result.answer.length > 0 ? (
-                    <ul>
-                      {result.answer.map((answer, index) => (
-                        <li key={index}>{answer}</li>
-                      ))}
-                    </ul>
-                  ) : (
-                    <p>No solutions found.</p>
-                  )
-                ) : (
-                  <p>{result.answer}</p>
-                )}
-              </div>
+    <p>
+      <strong>Category selected:</strong> {category}
+    </p>
 
-              <p>{result.message}</p>
+    <div className="solution-answer">
+  <strong>Final Answer:</strong>
+  {Array.isArray(result.answer) ? (
+    result.answer.length > 0 ? (
+      <ul>
+        {result.answer.map((answer, index) => (
+          <li key={index}>
+            <MathJax dynamic>
+              {`\\(${answer.replace(/\*/g, "\\cdot ").replace(/\^(\d+)/g, "^{$1}")}\\)`}
+            </MathJax>
+          </li>
+        ))}
+      </ul>
+    ) : <p>No solutions found.</p>
+  ) : (
+    <p>
+      <MathJax dynamic>
+        {`\\(${result.answer}\\)`}
+      </MathJax>
+    </p>
+  )}
+</div>
+    {result.steps.length > 0 && (
+      <div className="solution-steps">
+        <h3>Step-by-Step Explanation</h3>
 
-              <div className="verification-status">
-                {result.verified
-                  ? "✓ Mathematical verification passed"
-                  : "Verification not confirmed"}
-              </div>
-            </div>
-          )}
+        <ol>
+  {result.steps.map((step, index) => (
+    <li key={index}>
+      <p>{step}</p>
+
+      {result.step_formulas?.[index] && (
+        <MathJax dynamic>
+          {`\\[${result.step_formulas[index]}\\]`}
+        </MathJax>
+      )}
+    </li>
+  ))}
+</ol>
+      </div>
+    )}
+
+    {result.steps.length === 0 && (
+      <p>
+        Detailed steps are not available for this problem yet.
+      </p>
+    )}
+
+
+    <p>{result.message}</p>
+
+    <div className="verification-status">
+      {result.verified
+        ? "✓ Mathematical verification passed"
+        : "Verification not confirmed"}
+    </div>
+  </div>
+)}
+
         </section>
 
         <div className="ad-slot middle-ad">
@@ -271,7 +323,8 @@ function App() {
         </div>
         <small>© 2026 MathGenius AI. All rights reserved.</small>
       </footer>
-    </div>
+      </div>
+</MathJaxContext>
   );
 }
 

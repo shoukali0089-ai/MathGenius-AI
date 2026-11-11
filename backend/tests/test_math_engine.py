@@ -1,0 +1,113 @@
+
+import pytest
+
+from backend.app.math_engine import solve_math
+
+
+def test_linear_equation():
+    result = solve_math("3x+9=0")
+
+    assert result["success"] is True
+    assert result["answer"] == ["-3"]
+    assert result["verified"] is True
+    assert len(result["steps"]) == len(result["step_formulas"])
+
+
+def test_factorized_quadratic():
+    result = solve_math("x^2+5x+6=0")
+
+    assert result["answer"] == ["-3", "-2"]
+    assert result["verified"] is True
+    assert len(result["steps"]) == 5
+    assert len(result["step_formulas"]) == 5
+
+
+def test_quadratic_with_two_roots():
+    result = solve_math("x^2-9=0")
+
+    assert result["answer"] == ["-3", "3"]
+    assert result["verified"] is True
+    assert len(result["steps"]) == len(result["step_formulas"])
+
+
+def test_complex_roots():
+    result = solve_math("x^2+4=0")
+
+    assert result["answer"] == ["-2*I", "2*I"]
+    assert result["verified"] is True
+    assert len(result["steps"]) == 6
+    assert len(result["step_formulas"]) == 6
+
+
+def test_expression_simplification():
+    result = solve_math("2x+3x")
+
+    assert result["success"] is True
+    assert result["answer"] == "5*x"
+    assert result["verified"] is True
+
+
+def test_invalid_input():
+    with pytest.raises(ValueError):
+        solve_math("hello")
+
+
+def test_empty_input():
+    with pytest.raises(ValueError):
+        solve_math("")
+
+
+def test_problem_too_long():
+    with pytest.raises(ValueError):
+        solve_math("1" * 201)
+@pytest.mark.parametrize(
+    "problem",
+    [
+        "1/0",
+        "x/0",
+        "x/(x-x)",
+    ],
+)
+def test_division_by_zero(problem):
+    with pytest.raises(
+        ValueError,
+        match="Division by zero is not allowed.",
+    ):
+        solve_math(problem)
+def test_cubic_equation_reports_missing_steps():
+    result = solve_math("x^3+1=0")
+
+    assert result["success"] is True
+    assert len(result["answer"]) == 3
+    assert result["verified"] is True
+    assert result["steps"] == []
+    assert result["step_formulas"] == []
+    assert "detailed steps" in result["message"].lower()        
+ 
+def test_identity_equation():
+    result = solve_math("x-x=0")
+
+    assert result["success"] is True
+    assert result["answer"] == ["All values of x"]
+    assert result["verified"] is True
+    assert "infinitely many" in result["message"].lower()
+    assert len(result["steps"]) == len(result["step_formulas"])
+
+
+def test_inconsistent_equation():
+    result = solve_math("x-x=5")
+
+    assert result["success"] is True
+    assert result["answer"] == []
+    assert result["verified"] is True
+    assert "no solutions" in result["message"].lower()
+    assert len(result["steps"]) == len(result["step_formulas"])
+
+
+def test_repeated_quadratic_root():
+    result = solve_math("x^2=0")
+
+    assert result["answer"] == ["0"]
+    assert result["verified"] is True
+    assert len(result["steps"]) == len(result["step_formulas"])
+   
