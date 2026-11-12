@@ -164,3 +164,36 @@ def test_pure_cubic_equation_with_irrational_roots():
     assert len(result["step_formulas"]) == 5
     assert "successfully" in result["message"].lower()
     assert r"\sqrt[3]{2}" in result["step_formulas"][2]
+
+
+def test_cubic_equation_with_three_distinct_irrational_real_roots():
+    result = solve_math("x^3-3x+1=0")
+
+    assert result["success"] is True
+    assert len(result["answer"]) == 3
+    assert result["verified"] is True
+    assert len(result["steps"]) == 9
+    assert len(result["step_formulas"]) == 9
+    assert "successfully" in result["message"].lower()
+
+    assert any(
+        "cos" in formula
+        for formula in result["step_formulas"]
+    )
+
+
+def test_cubic_equation_with_one_real_and_two_complex_roots():
+    result = solve_math("x^3+x+1=0")
+
+    assert result["success"] is True
+    assert len(result["answer"]) == 3
+    assert result["verified"] is True
+    assert len(result["steps"]) == 9
+    assert len(result["step_formulas"]) == 9
+    assert len(result["steps"]) == len(result["step_formulas"])
+    assert "successfully" in result["message"].lower()
+
+    assert any(
+        "Cardano" in step
+        for step in result["steps"]
+    )

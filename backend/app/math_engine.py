@@ -100,6 +100,106 @@ def parse_math_expression(expression: str):
 def format_value(value) -> str:
     return str(sp.simplify(value))
 
+def get_trigonometric_cubic_roots(polynomial):
+    """Return exact trigonometric roots for cubics with three distinct real roots."""
+
+    if polynomial.degree() != 3:
+        return None
+
+    a, b, c, d = polynomial.all_coeffs()
+
+    # The current parser supports rational numeric coefficients.
+    if not all(coefficient.is_Rational for coefficient in (a, b, c, d)):
+        return None
+
+    if a == 0:
+        return None
+
+    # Convert the cubic into depressed form: t^3 + p*t + q = 0.
+    p = sp.simplify((3 * a * c - b**2) / (3 * a**2))
+    q = sp.simplify(
+        (2 * b**3 - 9 * a * b * c + 27 * a**2 * d)
+        / (27 * a**3)
+    )
+
+    discriminant = sp.simplify(-4 * p**3 - 27 * q**2)
+
+    # This method applies to three distinct real roots.
+    if not (p < 0 and discriminant > 0):
+        return None
+
+    amplitude = 2 * sp.sqrt(-p / 3)
+    cosine_value = sp.simplify(
+        (3 * q / (2 * p)) * sp.sqrt(-3 / p)
+    )
+
+    angle = sp.acos(cosine_value) / 3
+    shift = b / (3 * a)
+
+    roots = [
+        sp.simplify(
+            amplitude * sp.cos(angle - 2 * sp.pi * k / 3) - shift
+        )
+        for k in range(3)
+    ]
+
+    roots.sort(key=lambda root: float(sp.N(root)))
+    return roots
+
+
+
+def get_cardano_cubic_roots(polynomial):
+    """Return exact roots for cubics with one real and two complex roots."""
+
+    if polynomial.degree() != 3:
+        return None
+
+    a, b, c, d = polynomial.all_coeffs()
+
+    if not all(
+        coefficient.is_Rational
+        for coefficient in (a, b, c, d)
+    ):
+        return None
+
+    if a == 0:
+        return None
+
+    # Convert to depressed cubic: t^3 + p*t + q = 0.
+    p = sp.simplify(
+        (3 * a * c - b**2) / (3 * a**2)
+    )
+    q = sp.simplify(
+        (2 * b**3 - 9 * a * b * c + 27 * a**2 * d)
+        / (27 * a**3)
+    )
+
+    delta = sp.simplify(
+        (q / 2)**2 + (p / 3)**3
+    )
+
+    # Cardano's real-root branch applies when delta is positive.
+    if not (delta > 0):
+        return None
+
+    sqrt_delta = sp.sqrt(delta)
+
+    u = sp.real_root(-q / 2 + sqrt_delta, 3)
+    v = sp.real_root(-q / 2 - sqrt_delta, 3)
+
+    shift = sp.simplify(b / (3 * a))
+
+    omega = (-1 + sp.sqrt(3) * sp.I) / 2
+    omega_squared = sp.conjugate(omega)
+
+    roots = [
+        sp.simplify(u + v - shift),
+        sp.simplify(omega * u + omega_squared * v - shift),
+        sp.simplify(omega_squared * u + omega * v - shift),
+    ]
+
+    return roots
+
 
 def build_equation_steps(lhs, rhs, solutions):
     """Create genuine steps for supported linear, quadratic and cubic equations."""
@@ -442,6 +542,87 @@ def build_equation_steps(lhs, rhs, solutions):
             return steps
 
 
+        # Case 3: Cubic with three distinct real roots (trigonometric method)
+        trig_roots = get_trigonometric_cubic_roots(polynomial)
+
+        if trig_roots is not None:
+            a, b, c, d = polynomial.all_coeffs()
+
+            p = sp.simplify(
+                (3 * a * c - b**2) / (3 * a**2)
+            )
+            q = sp.simplify(
+                (2 * b**3 - 9 * a * b * c + 27 * a**2 * d)
+                / (27 * a**3)
+            )
+
+            discriminant = sp.simplify(-4 * p**3 - 27 * q**2)
+            amplitude = 2 * sp.sqrt(-p / 3)
+            cosine_value = sp.simplify(
+                (3 * q / (2 * p)) * sp.sqrt(-3 / p)
+            )
+            angle = sp.acos(cosine_value) / 3
+            shift = sp.simplify(b / (3 * a))
+
+            steps.extend([
+                f"Write the cubic equation in standard form: {sp.sstr(polynomial.as_expr())} = 0.",
+                f"Remove the quadratic term using the substitution x = t - {format_value(shift)}.",
+                f"The depressed cubic is t^3 + p*t + q = 0, where p = {format_value(p)} and q = {format_value(q)}.",
+                f"Calculate the discriminant: D = -4p^3 - 27q^2 = {format_value(discriminant)}.",
+                "Since D is positive, the equation has three distinct real roots.",
+                f"Use the trigonometric substitution t = {format_value(amplitude)} cos(theta), where cos(3*theta) = {format_value(cosine_value)}.",
+                f"The angle is theta = {format_value(angle)} radians.",
+                "The three roots are obtained by using k = 0, 1, 2 in the trigonometric formula.",
+                "Therefore, the three solutions are: "
+                + "; ".join(format_value(root) for root in trig_roots)
+                + ".",
+            ])
+
+            return steps
+
+
+
+        # Case 4: Cubic with one real and two complex roots (Cardano method)
+        cardano_roots = get_cardano_cubic_roots(polynomial)
+
+        if cardano_roots is not None:
+            a, b, c, d = polynomial.all_coeffs()
+
+            p = sp.simplify(
+                (3 * a * c - b**2) / (3 * a**2)
+            )
+            q = sp.simplify(
+                (2 * b**3 - 9 * a * b * c + 27 * a**2 * d)
+                / (27 * a**3)
+            )
+
+            delta = sp.simplify(
+                (q / 2)**2 + (p / 3)**3
+            )
+
+            sqrt_delta = sp.sqrt(delta)
+            u = sp.real_root(-q / 2 + sqrt_delta, 3)
+            v = sp.real_root(-q / 2 - sqrt_delta, 3)
+
+            shift = sp.simplify(b / (3 * a))
+            omega = (-1 + sp.sqrt(3) * sp.I) / 2
+            omega_squared = sp.conjugate(omega)
+
+            steps.extend([
+                f"Write the cubic equation in standard form: {sp.sstr(polynomial.as_expr())} = 0.",
+                f"Remove the quadratic term using the substitution x = t - {format_value(shift)}.",
+                f"The depressed cubic is t^3 + p*t + q = 0, where p = {format_value(p)} and q = {format_value(q)}.",
+                f"Calculate Cardano's discriminant: delta = (q/2)^2 + (p/3)^3 = {format_value(delta)}.",
+                "Since delta is positive, the equation has one real root and two non-real complex conjugate roots.",
+                f"Calculate u = cube_root(-q/2 + sqrt(delta)) = {format_value(u)} and v = cube_root(-q/2 - sqrt(delta)) = {format_value(v)}, using real cube roots.",
+                f"The real root is x1 = u + v - {format_value(shift)} = {format_value(cardano_roots[0])}.",
+                f"Using omega = {format_value(omega)}, the two complex roots are x2 = {format_value(cardano_roots[1])} and x3 = {format_value(cardano_roots[2])}.",
+                "Therefore, the three solutions are: "
+                + "; ".join(format_value(root) for root in cardano_roots)
+                + ".",
+            ])
+
+            return steps
 
     return []
 
@@ -670,6 +851,102 @@ def build_equation_step_formulas(lhs, rhs, solutions):
                 + sp.latex(root_minus),
             ]
 
+
+        # Case 3: Cubic with three distinct real roots (trigonometric method)
+        trig_roots = get_trigonometric_cubic_roots(polynomial)
+
+        if trig_roots is not None:
+            a, b, c, d = polynomial.all_coeffs()
+
+            p = sp.simplify(
+                (3 * a * c - b**2) / (3 * a**2)
+            )
+            q = sp.simplify(
+                (2 * b**3 - 9 * a * b * c + 27 * a**2 * d)
+                / (27 * a**3)
+            )
+
+            discriminant = sp.simplify(-4 * p**3 - 27 * q**2)
+            amplitude = 2 * sp.sqrt(-p / 3)
+            cosine_value = sp.simplify(
+                (3 * q / (2 * p)) * sp.sqrt(-3 / p)
+            )
+            angle = sp.acos(cosine_value) / 3
+            shift = sp.simplify(b / (3 * a))
+
+            return [
+                sp.latex(polynomial.as_expr()) + r" = 0",
+                r"x = t - " + sp.latex(shift),
+                r"t^3 + pt + q = 0,\quad p = "
+                + sp.latex(p) + r",\quad q = " + sp.latex(q),
+                r"D = -4p^3 - 27q^2 = "
+                + sp.latex(discriminant),
+                r"D > 0 \quad \Rightarrow \quad "
+                r"\text{three distinct real roots}",
+                r"t = " + sp.latex(amplitude)
+                + r"\cos(\theta),\quad \cos(3\theta) = "
+                + sp.latex(cosine_value),
+                r"\theta = " + sp.latex(angle)
+                + r"\text{ radians}",
+                r"t_k = " + sp.latex(amplitude)
+                + r"\cos\left(\theta - \frac{2k\pi}{3}\right),"
+                + r"\quad k = 0,1,2",
+                r"x = " + r",\quad x = ".join(
+                    sp.latex(root) for root in trig_roots
+                ),
+            ]
+
+
+        # Case 4: Cubic with one real and two complex roots (Cardano method)
+        cardano_roots = get_cardano_cubic_roots(polynomial)
+
+        if cardano_roots is not None:
+            a, b, c, d = polynomial.all_coeffs()
+
+            p = sp.simplify(
+                (3 * a * c - b**2) / (3 * a**2)
+            )
+            q = sp.simplify(
+                (2 * b**3 - 9 * a * b * c + 27 * a**2 * d)
+                / (27 * a**3)
+            )
+
+            delta = sp.simplify(
+                (q / 2)**2 + (p / 3)**3
+            )
+
+            sqrt_delta = sp.sqrt(delta)
+            u = sp.real_root(-q / 2 + sqrt_delta, 3)
+            v = sp.real_root(-q / 2 - sqrt_delta, 3)
+
+            shift = sp.simplify(b / (3 * a))
+            omega = (-1 + sp.sqrt(3) * sp.I) / 2
+            omega_squared = sp.conjugate(omega)
+
+            return [
+                sp.latex(polynomial.as_expr()) + r" = 0",
+                r"x = t - " + sp.latex(shift),
+                r"t^3 + pt + q = 0,\quad p = "
+                + sp.latex(p) + r",\quad q = " + sp.latex(q),
+                r"\Delta = \left(\frac{q}{2}\right)^2"
+                + r" + \left(\frac{p}{3}\right)^3 = "
+                + sp.latex(delta),
+                r"\Delta > 0 \quad \Rightarrow \quad "
+                r"\text{one real root and two complex roots}",
+                r"u = \sqrt[3]{-\frac{q}{2}+\sqrt{\Delta}},"
+                + r"\quad v = \sqrt[3]{-\frac{q}{2}-\sqrt{\Delta}}",
+                r"x_1 = u + v - " + sp.latex(shift)
+                + r" = " + sp.latex(cardano_roots[0]),
+                r"\omega = " + sp.latex(omega)
+                + r",\quad x_2 = \omega u + \omega^2 v - "
+                + sp.latex(shift)
+                + r",\quad x_3 = \omega^2 u + \omega v - "
+                + sp.latex(shift),
+                r"x = " + r",\quad x = ".join(
+                    sp.latex(root) for root in cardano_roots
+                ),
+            ]
+
     return []
 
 
@@ -736,15 +1013,25 @@ def solve_math(problem: str) -> dict:
                     "message": "No solutions exist for this equation."
                 }
 
-            solutions = sp.solve(sp.Eq(lhs, rhs), x)
+            polynomial = sp.Poly(sp.expand(lhs - rhs), x)
+
+            solutions = get_trigonometric_cubic_roots(polynomial)
+
+            if solutions is None:
+                solutions = get_cardano_cubic_roots(polynomial)
+
+            if solutions is None:
+                solutions = sp.solve(sp.Eq(lhs, rhs), x)
 
             answer = [format_value(item) for item in solutions]
             answer_formulas = [sp.latex(item) for item in solutions]
 
+
             verified = bool(solutions) and all(
-                sp.simplify(lhs.subs(x, item) - rhs.subs(x, item)) == 0
+                sp.checksol(lhs - rhs, x, item) is True
                 for item in solutions
             )
+
 
             try:
                 steps = build_equation_steps(lhs, rhs, solutions)
