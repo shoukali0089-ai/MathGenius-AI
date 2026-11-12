@@ -12,6 +12,26 @@ const mathJaxConfig = {
     skipHtmlTags: ["script", "noscript", "style", "textarea", "pre", "code"],
   },
 };
+
+const exampleEquations = [
+  {
+    label: "Basic Algebra",
+    equation: "x^2 + 5*x + 6 = 0",
+  },
+  {
+    label: "Linear Equation",
+    equation: "2*x + 5 = 15",
+  },
+  {
+    label: "Cubic Equation",
+    equation: "x^3 + x + 1 = 0",
+  },
+  {
+    label: "Quadratic Equation",
+    equation: "x^2 - 4 = 0",
+  },
+];
+
 type SolveResponse = {
   success: boolean;
   type: string;
@@ -235,6 +255,31 @@ function handleClear() {
             Use * for multiplication and ^ for powers.
             Example: x^2 + 5*x + 6 = 0
           </div>
+
+<div className="examples-section">
+  <h3>Try Example Equations</h3>
+
+  <div className="examples-list">
+    {exampleEquations.map((example) => (
+      <button
+        key={example.label}
+        type="button"
+        className="example-button"
+        disabled={loading}
+        onClick={() => {
+          setEquation(example.equation);
+          setResult(null);
+          setError("");
+          setCopiedAnswer(null);
+          setCopiedAll(false);
+          setCopiedSteps(false);
+        }}
+      >
+        {example.label}
+      </button>
+    ))}
+  </div>
+</div>
 
 <button
   className="clear-button"

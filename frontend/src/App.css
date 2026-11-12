@@ -733,3 +733,55 @@ footer small {
     width: 100%;
   }
 }
+
+/* Day 27: Example Equations */
+.examples-section {
+  margin: 20px 0;
+}
+
+.examples-section h3 {
+  margin-bottom: 12px;
+  color: #30384a;
+  font-size: 16px;
+}
+
+.examples-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.example-button {
+  padding: 10px 15px;
+  background: #f0edff;
+  color: #6955e8;
+  border: 1px solid #d8d0ff;
+  border-radius: 9px;
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.example-button:hover:not(:disabled) {
+  background: #6955e8;
+  color: #ffffff;
+  transform: translateY(-2px);
+}
+
+.example-button:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+@media (max-width: 600px) {
+  .examples-list {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .example-button {
+    width: 100%;
+    padding: 11px 8px;
+  }
+}
