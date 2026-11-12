@@ -693,3 +693,43 @@ footer small {
   border-color: #5140c9;
   color: #ffffff;
 }
+
+/* Day 26: Clear Button */
+.clear-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  margin-left: 10px;
+  padding: 12px 20px;
+  background: #f5f6fa;
+  color: #555d70;
+  border: 1px solid #dce2ee;
+  border-radius: 10px;
+  font-size: 14px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.clear-button:hover:not(:disabled) {
+  background: #e9ecf4;
+  border-color: #c5ccda;
+  color: #30384a;
+  transform: translateY(-1px);
+}
+
+.clear-button:active:not(:disabled) {
+  transform: translateY(0);
+}
+
+.clear-button:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+@media (max-width: 600px) {
+  .clear-button {
+    margin: 10px 0 0;
+    width: 100%;
+  }
+}

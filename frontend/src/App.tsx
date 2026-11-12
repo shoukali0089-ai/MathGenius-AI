@@ -95,6 +95,15 @@ async function handleCopyAllSteps() {
   }
 }
 
+function handleClear() {
+  setEquation("");
+  setResult(null);
+  setError("");
+  setCopiedAnswer(null);
+  setCopiedAll(false);
+  setCopiedSteps(false);
+}
+
   async function handleSolve() {
     if (!equation.trim()) {
       setError("Please enter a mathematical equation first.");
@@ -227,10 +236,20 @@ async function handleCopyAllSteps() {
             Example: x^2 + 5*x + 6 = 0
           </div>
 
+<button
+  className="clear-button"
+  onClick={handleClear}
+  type="button"
+  disabled={loading}
+>
+  Clear
+</button>
+
           <button
             className="solve-button"
             onClick={handleSolve}
             disabled={loading}
+
           >
             {loading ? "Solving..." : "✦ Solve Mathematics"}
           </button>
