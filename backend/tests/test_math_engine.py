@@ -74,16 +74,15 @@ def test_division_by_zero(problem):
         match="Division by zero is not allowed.",
     ):
         solve_math(problem)
-def test_cubic_equation_reports_missing_steps():
+def test_cubic_equation_with_complex_roots_has_detailed_steps():
     result = solve_math("x^3+1=0")
 
     assert result["success"] is True
     assert len(result["answer"]) == 3
     assert result["verified"] is True
-    assert result["steps"] == []
-    assert result["step_formulas"] == []
-    assert "detailed steps" in result["message"].lower()        
- 
+    assert len(result["steps"]) > 0
+    assert len(result["steps"]) == len(result["step_formulas"])
+    assert "successfully" in result["message"].lower()
 def test_identity_equation():
     result = solve_math("x-x=0")
 
@@ -110,4 +109,58 @@ def test_repeated_quadratic_root():
     assert result["answer"] == ["0"]
     assert result["verified"] is True
     assert len(result["steps"]) == len(result["step_formulas"])
-   
+
+def test_cubic_equation_with_three_rational_roots():
+    result = solve_math("x^3-6x^2+11x-6=0")
+
+    assert result["success"] is True
+    assert result["answer"] == ["1", "2", "3"]
+    assert result["verified"] is True
+    assert len(result["steps"]) > 0
+    assert len(result["steps"]) == len(result["step_formulas"])
+    assert "successfully" in result["message"].lower()
+
+
+def test_cubic_equation_with_repeated_root():
+    result = solve_math("x^3-3x^2+3x-1=0")
+
+    assert result["success"] is True
+    assert result["answer"] == ["1"]
+    assert result["verified"] is True
+    assert len(result["steps"]) > 0
+    assert len(result["steps"]) == len(result["step_formulas"])
+
+def test_cubic_triple_root_multiplicity():
+    result = solve_math("x^3-3x^2+3x-1=0")
+
+    assert result["answer"] == ["1"]
+    assert result["verified"] is True
+    assert any(
+        "multiplicity 3" in step.lower()
+        for step in result["steps"]
+    )
+    assert len(result["steps"]) == len(result["step_formulas"])
+
+
+def test_cubic_double_root_multiplicity():
+    result = solve_math("x^3-5x^2+8x-4=0")
+
+    assert result["answer"] == ["1", "2"]
+    assert result["verified"] is True
+    assert any(
+        "multiplicity 2" in step.lower()
+        for step in result["steps"]
+    )
+    assert len(result["steps"]) == len(result["step_formulas"])
+
+
+def test_pure_cubic_equation_with_irrational_roots():
+    result = solve_math("x^3-2=0")
+
+    assert result["success"] is True
+    assert len(result["answer"]) == 3
+    assert result["verified"] is True
+    assert len(result["steps"]) == 5
+    assert len(result["step_formulas"]) == 5
+    assert "successfully" in result["message"].lower()
+    assert r"\sqrt[3]{2}" in result["step_formulas"][2]

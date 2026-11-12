@@ -197,6 +197,51 @@ def build_equation_steps(lhs, rhs, solutions):
             for factor, multiplicity in factor_data
         )
 
+
+        # Case 0: Pure cubic equation (a*x^3 + d = 0)
+        cubic_coefficients = polynomial.all_coeffs()
+
+        if len(cubic_coefficients) == 4:
+            a, b, c, d = cubic_coefficients
+
+            if b == 0 and c == 0 and a != 0:
+                cube_value = sp.simplify(-d / a)
+
+                if cube_value != 0:
+                    real_root = sp.real_root(cube_value, 3)
+
+                    steps.append(
+                        "Write the pure cubic equation in standard form: "
+                        f"{sp.sstr(standard)} = 0"
+                    )
+
+                    steps.append(
+                        "Isolate the cubic term: "
+                        f"x^3 = {format_value(cube_value)}"
+                    )
+
+                    steps.append(
+                        "Take the real cube root: "
+                        f"x = {format_value(real_root)}"
+                    )
+
+                    steps.append(
+                        "A non-zero number has three complex cube roots. "
+                        "They are obtained using the three cube roots of unity."
+                    )
+
+                    roots_text = "; ".join(
+                        format_value(solution)
+                        for solution in solutions
+                    )
+
+                    steps.append(
+                        "Therefore, the three solutions are: "
+                        + roots_text
+                    )
+
+                    return steps
+
         # Case 1: All factors are linear
         if total_degree == 3 and all(
             sp.Poly(factor, x).degree() == 1
@@ -492,6 +537,40 @@ def build_equation_step_formulas(lhs, rhs, solutions):
             sp.Poly(factor, x).degree() * multiplicity
             for factor, multiplicity in factor_data
         )
+
+
+        # Case 0: Pure cubic equation (a*x^3 + d = 0)
+        cubic_coefficients = polynomial.all_coeffs()
+
+        if len(cubic_coefficients) == 4:
+            a, b, c, d = cubic_coefficients
+
+            if b == 0 and c == 0 and a != 0:
+                cube_value = sp.simplify(-d / a)
+
+                if cube_value != 0:
+                    real_root = sp.real_root(cube_value, 3)
+
+                    formulas = [
+                        sp.latex(standard) + r" = 0",
+
+                        r"x^3 = " + sp.latex(cube_value),
+
+                        r"x = " + sp.latex(real_root),
+
+                        (
+                            r"\omega = e^{\frac{2\pi i}{3}},"
+                            r"\quad \omega^3 = 1"
+                        ),
+
+                        r"x = "
+                        + r",\quad x = ".join(
+                            sp.latex(solution)
+                            for solution in solutions
+                        ),
+                    ]
+
+                    return formulas
 
         if total_degree == 3 and all(
             sp.Poly(factor, x).degree() == 1
