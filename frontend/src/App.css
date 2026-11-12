@@ -375,3 +375,321 @@ footer small {
 .solution-steps li::marker {
   font-weight: 700;
 }
+
+/* Final answer styling */
+.solution-answer {
+  margin-top: 20px;
+  padding: 22px;
+  background: #ffffff;
+  border: 1px solid #e6eaf2;
+  border-radius: 12px;
+  overflow-wrap: anywhere;
+}
+
+.solution-answer ul {
+  padding-left: 24px;
+  margin-top: 15px;
+}
+
+.solution-answer li {
+  padding: 16px 8px;
+  margin-bottom: 12px;
+  line-height: 2;
+  border-bottom: 1px solid #edf0f6;
+  overflow-x: auto;
+}
+
+.solution-answer li:last-child {
+  border-bottom: none;
+  margin-bottom: 0;
+}
+
+/* Decimal approximation */
+.answer-approximation {
+  margin-top: 10px;
+  padding: 9px 12px;
+  background: #f0edff;
+  color: #5140c9;
+  border-radius: 8px;
+  font-size: 14px;
+  font-weight: 600;
+  overflow-wrap: anywhere;
+}
+
+/* Mathematical formula readability */
+.solution-answer mjx-container {
+  font-size: 110% !important;
+  max-width: 100%;
+  overflow-x: auto;
+}
+
+.solution-steps mjx-container {
+  max-width: 100%;
+  overflow-x: auto;
+}
+
+/* Day 19: Professional Header */
+.navbar {
+  position: sticky;
+  top: 0;
+  z-index: 100;
+  min-height: 76px;
+  padding: 15px 7%;
+  background: rgba(255, 255, 255, 0.95);
+  backdrop-filter: blur(12px);
+  box-shadow: 0 4px 20px rgba(30, 40, 80, 0.04);
+}
+
+.brand {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  transition: color 0.2s ease;
+}
+
+.brand:hover {
+  color: #6955e8;
+}
+
+.brand-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 38px;
+  height: 38px;
+  background: #f0edff;
+  border-radius: 10px;
+}
+
+.navbar nav a {
+  transition: color 0.2s ease;
+}
+
+.navbar nav a:hover {
+  color: #6955e8;
+}
+
+.navbar select {
+  cursor: pointer;
+  outline-color: #6955e8;
+}
+
+@media (max-width: 700px) {
+  .navbar {
+    padding: 12px 18px;
+    flex-wrap: wrap;
+    gap: 12px;
+  }
+
+  .navbar nav {
+    order: 3;
+    width: 100%;
+    justify-content: center;
+    gap: 20px;
+  }
+
+  .brand {
+    font-size: 19px;
+  }
+}
+
+
+/* Day 19: Professional Solve Button */
+.solve-button {
+  position: relative;
+  overflow: hidden;
+  background: linear-gradient(135deg, #6955e8, #8065f5);
+  box-shadow: 0 6px 18px rgba(105, 85, 232, 0.22);
+  transition: transform 0.2s ease, box-shadow 0.2s ease,
+    background 0.2s ease;
+}
+
+.solve-button:hover:not(:disabled) {
+  background: linear-gradient(135deg, #5140c9, #6955e8);
+  transform: translateY(-2px);
+  box-shadow: 0 9px 22px rgba(105, 85, 232, 0.3);
+}
+
+.solve-button:active:not(:disabled) {
+  transform: translateY(0);
+}
+
+.solve-button:disabled {
+  opacity: 0.7;
+  cursor: not-allowed;
+  box-shadow: none;
+}
+
+
+/* Day 20: Professional Equation Input */
+.solver-card textarea {
+  background: #fcfcff;
+  border: 1.5px solid #dce2ee;
+  border-radius: 12px;
+  line-height: 1.7;
+  transition: border-color 0.2s ease, box-shadow 0.2s ease,
+    background 0.2s ease;
+}
+
+.solver-card textarea:focus {
+  border-color: #6955e8;
+  background: #ffffff;
+  box-shadow: 0 0 0 4px rgba(105, 85, 232, 0.12);
+  outline: none;
+}
+
+.solver-card textarea::placeholder {
+  color: #a0a7b7;
+}
+
+
+/* Day 21: Professional Result Card */
+.result-box {
+  margin-top: 28px;
+  padding: 26px;
+  background: #ffffff;
+  border: 1px solid #e6eaf2;
+  border-radius: 16px;
+  box-shadow: 0 8px 28px rgba(30, 40, 80, 0.06);
+  line-height: 1.9;
+  overflow-wrap: anywhere;
+  animation: resultFadeIn 0.35s ease;
+}
+
+.result-box small {
+  display: inline-block;
+  margin-top: 8px;
+  color: #5140c9;
+  font-weight: 600;
+}
+
+@keyframes resultFadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@media (max-width: 600px) {
+  .result-box {
+    padding: 18px;
+    margin-top: 20px;
+    border-radius: 12px;
+  }
+}
+
+
+/* Day 21: Mathematical Verification Badge */
+.verification-status {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  margin-top: 16px;
+  padding: 9px 14px;
+  border-radius: 30px;
+  background: #e8f8ef;
+  color: #16834a;
+  border: 1px solid #bce8ce;
+  font-size: 13px;
+  font-weight: 700;
+}
+
+
+/* Day 21: Professional Solution Steps */
+.solution-steps li {
+  margin: 10px 0;
+  padding: 16px;
+  background: #ffffff;
+  border: 1px solid #e8ebf2;
+  border-radius: 10px;
+  line-height: 1.8;
+  transition: border-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+.solution-steps li:hover {
+  border-color: #c9c0ff;
+  box-shadow: 0 4px 14px rgba(105, 85, 232, 0.07);
+}
+
+.solution-steps li::marker {
+  color: #6955e8;
+}
+/* Day 22: Exact Answer Highlight */
+
+.answer-item {
+  background: #ffffff;
+  border: 1px solid #e2defa;
+  border-radius: 12px;
+  padding: 18px !important;
+  margin-bottom: 16px;
+}
+
+.exact-answer {
+  padding: 12px;
+  background: #f7f5ff;
+  border-radius: 9px;
+  overflow-x: auto;
+}
+
+.answer-label {
+  display: block;
+  color: #6955e8;
+  font-size: 12px;
+  font-weight: 700;
+  margin-bottom: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.exact-answer mjx-container {
+  font-size: 115% !important;
+  max-width: 100%;
+  overflow-x: auto;
+}
+/* Day 23: Copy Answer Button */
+
+.copy-answer-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  margin-top: 12px;
+  padding: 9px 16px;
+  background: #f0edff;
+  color: #6955e8;
+  border: 1px solid #d8d0ff;
+  border-radius: 8px;
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.copy-answer-button:hover {
+  background: #6955e8;
+  color: #ffffff;
+  border-color: #6955e8;
+  transform: translateY(-1px);
+}
+
+.copy-answer-button:active {
+  transform: translateY(0);
+}
+/* Day 24: Copy All Answers Button */
+
+.copy-all-button {
+  margin: 14px 0 18px;
+  padding: 11px 20px;
+  background: #6955e8;
+  color: #ffffff;
+  border: 1px solid #6955e8;
+}
+
+.copy-all-button:hover {
+  background: #5140c9;
+  border-color: #5140c9;
+  color: #ffffff;
+}

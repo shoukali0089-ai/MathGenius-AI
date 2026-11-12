@@ -192,7 +192,10 @@ def test_cubic_equation_with_one_real_and_two_complex_roots():
     assert len(result["step_formulas"]) == 9
     assert len(result["steps"]) == len(result["step_formulas"])
     assert "successfully" in result["message"].lower()
-
+    assert len(result["answer_approximations"]) == 3
+    assert result["answer_approximations"][0].startswith("-0.682")
+    assert "I" in result["answer_approximations"][1]
+    assert "I" in result["answer_approximations"][2]
     assert any(
         "Cardano" in step
         for step in result["steps"]

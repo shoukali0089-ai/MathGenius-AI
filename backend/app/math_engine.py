@@ -100,6 +100,15 @@ def parse_math_expression(expression: str):
 def format_value(value) -> str:
     return str(sp.simplify(value))
 
+
+def format_substitution(shift) -> str:
+    shift = sp.simplify(shift)
+
+    if shift == 0:
+        return "x = t"
+
+    return f"x = t - {format_value(shift)}"
+
 def get_trigonometric_cubic_roots(polynomial):
     """Return exact trigonometric roots for cubics with three distinct real roots."""
 
@@ -566,7 +575,7 @@ def build_equation_steps(lhs, rhs, solutions):
 
             steps.extend([
                 f"Write the cubic equation in standard form: {sp.sstr(polynomial.as_expr())} = 0.",
-                f"Remove the quadratic term using the substitution x = t - {format_value(shift)}.",
+                f"Remove the quadratic term using the substitution {format_substitution(shift)}.",
                 f"The depressed cubic is t^3 + p*t + q = 0, where p = {format_value(p)} and q = {format_value(q)}.",
                 f"Calculate the discriminant: D = -4p^3 - 27q^2 = {format_value(discriminant)}.",
                 "Since D is positive, the equation has three distinct real roots.",
@@ -610,7 +619,7 @@ def build_equation_steps(lhs, rhs, solutions):
 
             steps.extend([
                 f"Write the cubic equation in standard form: {sp.sstr(polynomial.as_expr())} = 0.",
-                f"Remove the quadratic term using the substitution x = t - {format_value(shift)}.",
+                f"Remove the quadratic term using the substitution {format_substitution(shift)}.",
                 f"The depressed cubic is t^3 + p*t + q = 0, where p = {format_value(p)} and q = {format_value(q)}.",
                 f"Calculate Cardano's discriminant: delta = (q/2)^2 + (p/3)^3 = {format_value(delta)}.",
                 "Since delta is positive, the equation has one real root and two non-real complex conjugate roots.",
@@ -876,7 +885,7 @@ def build_equation_step_formulas(lhs, rhs, solutions):
 
             return [
                 sp.latex(polynomial.as_expr()) + r" = 0",
-                r"x = t - " + sp.latex(shift),
+                (r"x = t" if shift == 0 else r"x = t - " + sp.latex(shift)),
                 r"t^3 + pt + q = 0,\quad p = "
                 + sp.latex(p) + r",\quad q = " + sp.latex(q),
                 r"D = -4p^3 - 27q^2 = "
@@ -925,7 +934,7 @@ def build_equation_step_formulas(lhs, rhs, solutions):
 
             return [
                 sp.latex(polynomial.as_expr()) + r" = 0",
-                r"x = t - " + sp.latex(shift),
+                (r"x = t" if shift == 0 else r"x = t - " + sp.latex(shift)),
                 r"t^3 + pt + q = 0,\quad p = "
                 + sp.latex(p) + r",\quad q = " + sp.latex(q),
                 r"\Delta = \left(\frac{q}{2}\right)^2"
@@ -1025,6 +1034,9 @@ def solve_math(problem: str) -> dict:
 
             answer = [format_value(item) for item in solutions]
             answer_formulas = [sp.latex(item) for item in solutions]
+            answer_approximations = [
+                str(sp.N(item, 10)) for item in solutions
+            ]
 
 
             verified = bool(solutions) and all(
@@ -1055,6 +1067,7 @@ def solve_math(problem: str) -> dict:
                 "problem": problem,
                 "answer": answer,
                 "answer_formulas": answer_formulas,
+                "answer_approximations": answer_approximations,
                 "steps": steps,
                 "step_formulas": step_formulas,
                 "verified": verified,

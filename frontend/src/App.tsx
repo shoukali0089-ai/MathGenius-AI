@@ -18,6 +18,7 @@ type SolveResponse = {
   problem: string;
   answer: string | string[];
   answer_formulas?: string[];
+  answer_approximations?: string[];
   steps: string[];
   step_formulas?: string[];
   verified: boolean;
@@ -32,7 +33,45 @@ function App() {
   const [result, setResult] = useState<SolveResponse | null>(null);
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
+  const [copiedAnswer, setCopiedAnswer] = useState<number | "single" | null>(null);
+  const [copiedAll, setCopiedAll] = useState(false);
 
+  async function handleCopyAnswer(
+  text: string,
+  key: number | "single"
+) {
+  try {
+    await navigator.clipboard.writeText(text);
+    setCopiedAnswer(key);
+  } catch {
+    setError("Unable to copy answer. Please try again.");
+  }
+}
+async function handleCopyAllAnswers() {
+  if (!result) return;
+
+  const answers = Array.isArray(result.answer)
+    ? result.answer
+    : [result.answer];
+
+  const allAnswers = answers.map((answer, index) => {
+    const approximation = result.answer_approximations?.[index];
+
+    return [
+`Answer ${index + 1}: ${result.answer_formulas?.[index] ?? answer}`,
+      ...(approximation
+        ? [`Approximation: ${approximation.replace(/\*I/g, "i")}`]
+        : []),
+    ].join("\n");
+  });
+
+  try {
+    await navigator.clipboard.writeText(allAnswers.join("\n\n"));
+    setCopiedAll(true);
+  } catch {
+    setError("Unable to copy all answers. Please try again.");
+  }
+}
   async function handleSolve() {
     if (!equation.trim()) {
       setError("Please enter a mathematical equation first.");
@@ -75,7 +114,6 @@ function App() {
 
   return (
     <MathJaxContext config={mathJaxConfig}>
-  <div className="app"></div>
     <div className="app">
       <header className="navbar">
         <a className="brand" href="#">
@@ -203,26 +241,61 @@ function App() {
       <strong>Category selected:</strong> {category}
     </p>
 
-    <div className="solution-answer">
+   <div className="solution-answer">
   <strong>Final Answer:</strong>
+  <button
+  className="copy-answer-button copy-all-button"
+  onClick={handleCopyAllAnswers}
+  type="button"
+>
+  {copiedAll ? "✓ All Answers Copied!" : "Copy All Answers"}
+</button>
+
   {Array.isArray(result.answer) ? (
     result.answer.length > 0 ? (
       <ul>
         {result.answer.map((answer, index) => (
-  <li key={index}>
-    <MathJax dynamic>
-      {`\\(${result.answer_formulas?.[index] ?? answer}\\)`}
-    </MathJax>
-  </li>
-))}
+          <li className="answer-item" key={index}>
+            <div className="exact-answer">
+              <span className="answer-label">Exact Answer</span>
+              <MathJax dynamic>
+                {`\\(${result.answer_formulas?.[index] ?? answer}\\)`}
+              </MathJax>
+<button
+  className="copy-answer-button"
+  onClick={() => handleCopyAnswer(answer, index)}
+  type="button"
+>
+  {copiedAnswer === index ? "✓ Copied!" : "Copy Answer"}
+</button>
+            </div>
+
+            {result.answer_approximations?.[index] && (
+              <p className="answer-approximation">
+                <strong>Approximation:</strong>{" "}
+                {result.answer_approximations[index].replace(/\*I/g, "i")}
+              </p>
+            )}
+          </li>
+        ))}
       </ul>
-    ) : <p>No solutions found.</p>
+    ) : (
+      <p>No solutions found.</p>
+    )
   ) : (
-    <p>
+    <div className="exact-answer">
+      <span className="answer-label">Exact Answer</span>
       <MathJax dynamic>
         {`\\(${result.answer}\\)`}
       </MathJax>
-    </p>
+      <button
+  className="copy-answer-button"
+  onClick={() => handleCopyAnswer(result.answer as string, "single")}
+  type="button"
+>
+  {copiedAnswer === "single" ? "✓ Copied!" : "Copy Answer"}
+</button>
+    </div>
   )}
 </div>
     {result.steps.length > 0 && (
