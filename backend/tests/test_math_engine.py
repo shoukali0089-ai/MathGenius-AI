@@ -200,3 +200,28 @@ def test_cubic_equation_with_one_real_and_two_complex_roots():
         "Cardano" in step
         for step in result["steps"]
     )
+def test_rational_equation_with_linear_denominator():
+    result = solve_math("1/(x-1)=2")
+
+    assert result["answer"] == ["3/2"]
+    assert result["verified"] is True
+
+
+def test_rational_equation_rejects_invalid_root():
+    result = solve_math("1/(x-1)=1/(x-1)+(x-1)")
+
+    assert result["answer"] == []
+    assert result["verified"] is False
+
+
+def test_rational_equation_with_two_denominators():
+    result = solve_math("1/x + 1/(x-1)=1")
+
+    assert len(result["answer"]) == 2
+    assert result["verified"] is True
+
+def test_rational_identity_excludes_zero_denominator():
+    result = solve_math("(x-1)/(x-1)=1")
+
+    assert "x = 1" in result["answer"][0]
+    assert result["verified"] is True

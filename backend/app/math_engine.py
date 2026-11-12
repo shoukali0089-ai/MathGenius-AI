@@ -11,6 +11,7 @@ x = sp.Symbol("x")
 def prepare_expression(expression: str) -> str:
     """Normalize basic mathematical notation without evaluating code."""
 
+
     expression = expression.strip()
     expression = expression.replace("^", "**")
     expression = expression.replace("X", "x")
@@ -95,7 +96,33 @@ def parse_math_expression(expression: str):
         raise ValueError("Expression is too complex.")
 
     return parse_node(tree.body)
+def get_denominator_restrictions(expression: str):
 
+    prepared = prepare_expression(expression)
+
+    try:
+        tree = ast.parse(prepared, mode="eval")
+    except SyntaxError:
+        raise ValueError("Invalid mathematical expression.")
+
+    if sum(1 for _ in ast.walk(tree)) > 80:
+        raise ValueError("Expression is too complex.")
+
+    restrictions = []
+
+    for node in ast.walk(tree):
+        if (
+            isinstance(node, ast.BinOp)
+            and isinstance(node.op, ast.Div)
+        ):
+            denominator = parse_node(node.right)
+
+            if denominator == 0:
+                raise ValueError("Division by zero is not allowed.")
+
+            restrictions.append(denominator)
+
+    return restrictions
 
 def format_value(value) -> str:
     return str(sp.simplify(value))
@@ -959,6 +986,7 @@ def build_equation_step_formulas(lhs, rhs, solutions):
     return []
 
 
+
 def solve_math(problem: str) -> dict:
     if not isinstance(problem, str):
         raise ValueError("Problem must be text.")
@@ -984,26 +1012,117 @@ def solve_math(problem: str) -> dict:
             lhs = parse_math_expression(left)
             rhs = parse_math_expression(right)
 
+            denominator_restrictions = (
+                get_denominator_restrictions(left)
+                + get_denominator_restrictions(right)
+            )
+
             difference = sp.simplify(lhs - rhs)
 
+            # Identity equation: 0 = 0
             if difference == 0:
+                excluded_values = set()
+                unknown_restrictions = False
+
+                for restriction in denominator_restrictions:
+                    restriction_numerator = sp.together(
+                        restriction
+                    ).as_numer_denom()[0]
+
+                    try:
+                        restriction_solutions = sp.solveset(
+                            restriction_numerator,
+                            x,
+                            domain=sp.S.Reals,
+                        )
+
+                        if isinstance(
+                            restriction_solutions,
+                            sp.FiniteSet,
+                        ):
+                            excluded_values.update(
+                                sp.simplify(item)
+                                for item in restriction_solutions
+                            )
+
+                        elif restriction_solutions != sp.EmptySet:
+                            unknown_restrictions = True
+
+                    except (NotImplementedError, ValueError):
+                        unknown_restrictions = True
+
+                excluded_values = sorted(
+                    excluded_values,
+                    key=sp.default_sort_key,
+                )
+
+                if unknown_restrictions:
+                    answer = [
+                        "All real values of x satisfying the original denominator restrictions"
+                    ]
+                elif excluded_values:
+                    excluded_text = ", ".join(
+                        f"x = {format_value(item)}"
+                        for item in excluded_values
+                    )
+
+                    answer = [
+                        f"All real values of x except {excluded_text}"
+                    ]
+                else:
+                    answer = ["All values of x"]
+
+                steps = [
+                    "Simplify both sides: 0 = 0",
+                ]
+
+                step_formulas = [
+                    r"0 = 0",
+                ]
+
+                if excluded_values:
+                    excluded_text = ", ".join(
+                        f"x = {format_value(item)}"
+                        for item in excluded_values
+                    )
+
+                    steps.append(
+                        "Exclude these values because they make "
+                        f"an original denominator zero: {excluded_text}."
+                    )
+
+                    step_formulas.append(
+                        r"\text{Excluded values: } "
+                        + r",\ ".join(
+                            sp.latex(item)
+                            for item in excluded_values
+                        )
+                    )
+
+                steps.append(
+                    "The identity is true for every remaining "
+                    "allowed real value of x."
+                )
+
+                step_formulas.append(
+                    r"\text{True for all allowed } x"
+                )
+
                 return {
                     "success": True,
                     "type": "equation",
                     "problem": problem,
-                    "answer": ["All values of x"],
-                    "steps": [
-                        "Simplify both sides: 0 = 0",
-                        "This identity is true for every value of x."
-                    ],
-                    "step_formulas": [
-                        r"0 = 0",
-                        r"\text{True for all } x"
-                    ],
+                    "answer": answer,
+                    "steps": steps,
+                    "step_formulas": step_formulas,
                     "verified": True,
-                    "message": "Identity equation: infinitely many solutions."
+                    "message": (
+                        "Identity equation: infinitely many "
+                        "allowed solutions."
+                    ),
                 }
 
+            # Constant contradiction
             if not difference.has(x):
                 return {
                     "success": True,
@@ -1012,17 +1131,21 @@ def solve_math(problem: str) -> dict:
                     "answer": [],
                     "steps": [
                         f"Simplify the equation: {sp.sstr(difference)} = 0",
-                        "This is a contradiction, so no value of x satisfies the equation."
+                        "This is a contradiction, so no value of x satisfies the equation.",
                     ],
                     "step_formulas": [
                         sp.latex(difference) + r" = 0",
-                        r"\text{No solution}"
+                        r"\text{No solution}",
                     ],
                     "verified": True,
-                    "message": "No solutions exist for this equation."
+                    "message": "No solutions exist for this equation.",
                 }
 
-            polynomial = sp.Poly(sp.expand(lhs - rhs), x)
+            # Combine rational expressions and solve the numerator.
+            combined_equation = sp.together(lhs - rhs)
+            numerator, denominator = combined_equation.as_numer_denom()
+
+            polynomial = sp.Poly(sp.expand(numerator), x)
 
             solutions = get_trigonometric_cubic_roots(polynomial)
 
@@ -1032,27 +1155,61 @@ def solve_math(problem: str) -> dict:
             if solutions is None:
                 solutions = sp.solve(sp.Eq(lhs, rhs), x)
 
-            answer = [format_value(item) for item in solutions]
-            answer_formulas = [sp.latex(item) for item in solutions]
-            answer_approximations = [
-                str(sp.N(item, 10)) for item in solutions
+            # Remove roots that make an original denominator zero.
+            valid_solutions = []
+
+            for item in solutions:
+                valid = True
+
+                for restriction in denominator_restrictions:
+                    denominator_value = sp.simplify(
+                        restriction.subs(x, item)
+                    )
+
+                    # Accept only when non-zero is established.
+                    if denominator_value.equals(0) is not False:
+                        valid = False
+                        break
+
+                if valid:
+                    valid_solutions.append(item)
+
+            solutions = valid_solutions
+
+            answer = [
+                format_value(item)
+                for item in solutions
             ]
 
+            answer_formulas = [
+                sp.latex(item)
+                for item in solutions
+            ]
+
+            answer_approximations = [
+                str(sp.N(item, 10))
+                for item in solutions
+            ]
 
             verified = bool(solutions) and all(
                 sp.checksol(lhs - rhs, x, item) is True
                 for item in solutions
             )
 
-
             try:
-                steps = build_equation_steps(lhs, rhs, solutions)
+                steps = build_equation_steps(
+                    lhs,
+                    rhs,
+                    solutions,
+                )
             except (sp.PolynomialError, ValueError, TypeError):
                 steps = []
 
             try:
                 step_formulas = build_equation_step_formulas(
-                    lhs, rhs, solutions
+                    lhs,
+                    rhs,
+                    solutions,
                 )
             except (sp.PolynomialError, ValueError, TypeError):
                 step_formulas = []
@@ -1080,9 +1237,10 @@ def solve_math(problem: str) -> dict:
                         if solutions
                         else "No solutions found for this equation."
                     )
-                )
+                ),
             }
 
+        # Expression simplification
         expression = parse_math_expression(problem)
         simplified = sp.simplify(expression)
 
@@ -1093,14 +1251,15 @@ def solve_math(problem: str) -> dict:
             "answer": str(simplified),
             "steps": [
                 f"Original expression: {problem}",
-                f"Simplified expression: {sp.sstr(simplified)}"
+                f"Simplified expression: {sp.sstr(simplified)}",
             ],
             "verified": True,
-            "message": "Expression simplified successfully."
+            "message": "Expression simplified successfully.",
         }
 
     except ValueError:
         raise
+
     except Exception:
         raise ValueError(
             "Unable to solve this problem. Please check your expression."
