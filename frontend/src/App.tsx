@@ -33,8 +33,9 @@ function App() {
   const [result, setResult] = useState<SolveResponse | null>(null);
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
-  const [copiedAnswer, setCopiedAnswer] = useState<number | "single" | null>(null);
-  const [copiedAll, setCopiedAll] = useState(false);
+ const [copiedAnswer, setCopiedAnswer] = useState<number | "single" | null>(null);
+const [copiedAll, setCopiedAll] = useState(false);
+const [copiedSteps, setCopiedSteps] = useState(false);
 
   async function handleCopyAnswer(
   text: string,
@@ -72,6 +73,28 @@ async function handleCopyAllAnswers() {
     setError("Unable to copy all answers. Please try again.");
   }
 }
+
+
+async function handleCopyAllSteps() {
+  if (!result) return;
+
+  const allSteps = result.steps.map((step, index) => {
+    const formula = result.step_formulas?.[index];
+
+    return [
+      `Step ${index + 1}: ${step}`,
+      ...(formula ? [`Formula: ${formula}`] : []),
+    ].join("\n");
+  });
+
+  try {
+    await navigator.clipboard.writeText(allSteps.join("\n\n"));
+    setCopiedSteps(true);
+  } catch {
+    setError("Unable to copy all steps. Please try again.");
+  }
+}
+
   async function handleSolve() {
     if (!equation.trim()) {
       setError("Please enter a mathematical equation first.");
@@ -301,6 +324,14 @@ async function handleCopyAllAnswers() {
     {result.steps.length > 0 && (
       <div className="solution-steps">
         <h3>Step-by-Step Explanation</h3>
+
+<button
+  className="copy-answer-button copy-all-button"
+  onClick={handleCopyAllSteps}
+  type="button"
+>
+  {copiedSteps ? "✓ All Steps Copied!" : "Copy All Steps"}
+</button>
 
         <ol>
   {result.steps.map((step, index) => (
