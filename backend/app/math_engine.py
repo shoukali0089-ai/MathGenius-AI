@@ -660,7 +660,7 @@ def build_equation_steps(lhs, rhs, solutions):
 
             return steps
 
-    # Degree 4: Factorable quartic equations
+    # Degree 4: Factorable and biquadratic quartic equations
     if degree == 4:
         standard = polynomial.as_expr()
         factorized = sp.factor(standard)
@@ -676,6 +676,7 @@ def build_equation_steps(lhs, rhs, solutions):
             for factor, multiplicity in factor_data
         )
 
+        # Method 1: Quartics with rational linear factors
         if total_degree == 4 and all(
             factor_degree == 1
             for factor_degree in factor_degrees
@@ -721,6 +722,60 @@ def build_equation_steps(lhs, rhs, solutions):
 
             return steps
 
+        # Method 2: Biquadratic equations
+        coefficients = polynomial.all_coeffs()
+
+        if len(coefficients) == 5:
+            a, b, c, d, e = coefficients
+
+            if b == 0 and d == 0 and a != 0:
+                y = sp.Symbol("y")
+
+                y_solutions = sp.solve(
+                    a * y**2 + c * y + e,
+                    y
+                )
+
+                steps.append(
+                    "Write the biquadratic equation in standard form: "
+                    f"{sp.sstr(standard)} = 0."
+                )
+
+                steps.append(
+                    "Substitute y = x^2 to convert the quartic "
+                    "equation into a quadratic equation."
+                )
+
+                steps.append(
+                    f"The quadratic equation becomes: "
+                    f"{sp.sstr(a*y**2 + c*y + e)} = 0."
+                )
+
+                for y_value in y_solutions:
+                    steps.append(
+                        f"Solve the quadratic equation: "
+                        f"y = {format_value(y_value)}."
+                    )
+
+                    steps.append(
+                        f"Substitute y = {format_value(y_value)} "
+                        f"back into x^2 = y."
+                    )
+
+                    for root in sp.solve(x**2 - y_value, x):
+                        steps.append(
+                            f"Therefore, x = {format_value(root)}."
+                        )
+
+                steps.append(
+                    "Therefore, the quartic solutions are: "
+                    + "; ".join(
+                        format_value(root) for root in solutions
+                    )
+                    + "."
+                )
+
+                return steps
 
     return []
 
@@ -1097,7 +1152,53 @@ def build_equation_step_formulas(lhs, rhs, solutions):
             )
 
             return formulas
+        # Method 2: Biquadratic equations
+        coefficients = polynomial.all_coeffs()
 
+        if len(coefficients) == 5:
+            a, b, c, d, e = coefficients
+
+            if b == 0 and d == 0 and a != 0:
+                y = sp.Symbol("y")
+
+                y_solutions = sp.solve(
+                    a * y**2 + c * y + e,
+                    y
+                )
+
+                formulas = [
+                    sp.latex(standard) + r" = 0",
+                    r"\text{Substitute } y = x^2",
+                    sp.latex(a*y**2 + c*y + e) + r" = 0",
+                ]
+
+                for y_value in y_solutions:
+                    formulas.append(
+                        r"y = " + sp.latex(y_value)
+                    )
+
+                    formulas.append(
+                        r"x^2 = " + sp.latex(y_value)
+                    )
+
+                    x_roots = sp.solve(
+                        x**2 - y_value,
+                        x
+                    )
+
+                    for root in x_roots:
+                        formulas.append(
+                            r"x = " + sp.latex(root)
+                        )
+
+                formulas.append(
+                    r"x = "
+                    + r",\quad x = ".join(
+                        sp.latex(root) for root in solutions
+                    )
+                )
+
+                return formulas
     return []
 
 

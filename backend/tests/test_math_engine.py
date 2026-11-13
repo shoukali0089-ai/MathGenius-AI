@@ -247,3 +247,26 @@ def test_factorable_quartic_equation_with_repeated_roots():
         "multiplicity 2" in step
         for step in result["steps"]
     )
+def test_biquadratic_quartic_equation_has_detailed_steps():
+    result = solve_math("x^4 - 2 = 0")
+
+    assert len(result["answer"]) == 4
+    assert result["verified"] is True
+    assert len(result["steps"]) > 0
+    assert len(result["steps"]) == len(result["step_formulas"])
+    assert any(
+        "substitute y = x^2" in step.lower()
+        for step in result["steps"]
+    )
+def test_biquadratic_quartic_equation_with_complex_roots():
+    result = solve_math("x^4 + 1 = 0")
+
+    assert len(result["answer"]) == 4
+    assert result["verified"] is True
+    assert len(result["steps"]) > 0
+    assert len(result["steps"]) == len(result["step_formulas"])
+    assert any(
+        "substitute y = x^2" in step.lower()
+        for step in result["steps"]
+    )
+    assert all("I" in answer for answer in result["answer"])
