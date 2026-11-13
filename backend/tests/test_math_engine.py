@@ -225,3 +225,25 @@ def test_rational_identity_excludes_zero_denominator():
 
     assert "x = 1" in result["answer"][0]
     assert result["verified"] is True
+def test_factorable_quartic_equation_has_detailed_steps():
+    result = solve_math("x^4 - 5*x^2 + 4 = 0")
+
+    assert result["answer"] == ["-2", "-1", "1", "2"]
+    assert result["verified"] is True
+    assert len(result["steps"]) > 0
+    assert len(result["steps"]) == len(result["step_formulas"])
+    assert any(
+        "Factorize the polynomial" in step
+        for step in result["steps"]
+    )
+def test_factorable_quartic_equation_with_repeated_roots():
+    result = solve_math("x^4 - 2*x^3 + x^2 = 0")
+
+    assert result["answer"] == ["0", "1"]
+    assert result["verified"] is True
+    assert len(result["steps"]) > 0
+    assert len(result["steps"]) == len(result["step_formulas"])
+    assert any(
+        "multiplicity 2" in step
+        for step in result["steps"]
+    )

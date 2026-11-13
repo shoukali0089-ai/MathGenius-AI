@@ -660,6 +660,68 @@ def build_equation_steps(lhs, rhs, solutions):
 
             return steps
 
+    # Degree 4: Factorable quartic equations
+    if degree == 4:
+        standard = polynomial.as_expr()
+        factorized = sp.factor(standard)
+        factor_data = sp.factor_list(standard)[1]
+
+        factor_degrees = [
+            sp.Poly(factor, x).degree()
+            for factor, multiplicity in factor_data
+        ]
+
+        total_degree = sum(
+            sp.Poly(factor, x).degree() * multiplicity
+            for factor, multiplicity in factor_data
+        )
+
+        if total_degree == 4 and all(
+            factor_degree == 1
+            for factor_degree in factor_degrees
+        ):
+            steps.append(
+                f"Write the quartic equation in standard form: "
+                f"{sp.sstr(standard)} = 0."
+            )
+
+            steps.append(
+                f"Factorize the polynomial: "
+                f"{sp.sstr(factorized)} = 0."
+            )
+
+            steps.append(
+                "Apply the zero-product property: "
+                "set each linear factor equal to zero."
+            )
+
+            for factor, multiplicity in factor_data:
+                factor_poly = sp.Poly(factor, x)
+                factor_a, factor_b = factor_poly.all_coeffs()
+                root = sp.simplify(-factor_b / factor_a)
+
+                steps.append(
+                    f"Solve {sp.sstr(factor)} = 0: "
+                    f"x = {format_value(root)}."
+                )
+
+                if multiplicity > 1:
+                    steps.append(
+                        f"The root x = {format_value(root)} "
+                        f"has multiplicity {multiplicity}."
+                    )
+
+            steps.append(
+                "Therefore, the solutions are: "
+                + "; ".join(
+                    format_value(root) for root in solutions
+                )
+                + "."
+            )
+
+            return steps
+
+
     return []
 
 
@@ -983,13 +1045,66 @@ def build_equation_step_formulas(lhs, rhs, solutions):
                 ),
             ]
 
-    return []
 
+    # Degree 4: Factorable quartic equations
+    if degree == 4:
+        standard = polynomial.as_expr()
+        factorized = sp.factor(standard)
+        factor_data = sp.factor_list(standard)[1]
+
+        factor_degrees = [
+            sp.Poly(factor, x).degree()
+            for factor, multiplicity in factor_data
+        ]
+
+        total_degree = sum(
+            sp.Poly(factor, x).degree() * multiplicity
+            for factor, multiplicity in factor_data
+        )
+
+        if total_degree == 4 and all(
+            factor_degree == 1
+            for factor_degree in factor_degrees
+        ):
+            formulas = [
+                sp.latex(standard) + r" = 0",
+                sp.latex(factorized) + r" = 0",
+                r"\text{Apply the zero-product property}",
+            ]
+
+            for factor, multiplicity in factor_data:
+                factor_poly = sp.Poly(factor, x)
+                factor_a, factor_b = factor_poly.all_coeffs()
+                root = sp.simplify(-factor_b / factor_a)
+
+                formulas.append(
+                    sp.latex(factor)
+                    + r" = 0 \quad \Rightarrow \quad x = "
+                    + sp.latex(root)
+                )
+
+                if multiplicity > 1:
+                    formulas.append(
+                        r"\text{Multiplicity} = "
+                        + str(multiplicity)
+                    )
+
+            formulas.append(
+                r"x = "
+                + r",\quad x = ".join(
+                    sp.latex(root) for root in solutions
+                )
+            )
+
+            return formulas
+
+    return []
 
 
 def solve_math(problem: str) -> dict:
     if not isinstance(problem, str):
         raise ValueError("Problem must be text.")
+
 
     problem = problem.strip()
 
