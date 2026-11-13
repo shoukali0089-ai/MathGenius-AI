@@ -1,7 +1,91 @@
 
 import pytest
+import sympy as sp
 
-from backend.app.math_engine import solve_math
+from backend.app.math_engine import parse_math_expression, solve_math
+
+
+def test_square_root_expression_parsing():
+    result = parse_math_expression("sqrt(x+5)")
+
+    assert result == sp.sqrt(sp.Symbol("x") + 5)
+
+
+def test_square_root_number_parsing():
+    result = parse_math_expression("sqrt(25)")
+
+    assert result == 5
+
+
+@pytest.mark.parametrize(
+    "expression",
+    [
+        "__import__('os')",
+        "sqrt()",
+        "sqrt(1, 2)",
+        "unknown(x)",
+        "sqrt(sqrt(x))",
+    ],
+)
+def test_unsupported_function_calls_are_rejected(expression):
+    with pytest.raises(ValueError):
+        parse_math_expression(expression)
+
+
+def test_simple_square_root_equation():
+    result = solve_math("sqrt(x+5)=4")
+
+    assert result["success"] is True
+    assert result["answer"] == ["11"]
+    assert result["verified"] is True
+
+
+def test_square_root_equation_rejects_extraneous_roots():
+    result = solve_math("sqrt(x+1)=x-1")
+
+    assert result["success"] is True
+    assert result["answer"] == ["3"]
+    assert result["verified"] is True
+
+
+def test_square_root_equation_with_no_real_solution():
+    result = solve_math("sqrt(x+1)=-2")
+
+    assert result["success"] is True
+    assert result["answer"] == []
+    assert result["verified"] is True
+
+
+def test_square_root_equation_with_zero_solution():
+    result = solve_math("sqrt(x+1)=0")
+
+    assert result["success"] is True
+    assert result["answer"] == ["-1"]
+    assert result["verified"] is True
+
+
+def test_equation_with_two_square_roots():
+    result = solve_math("sqrt(x+1)=sqrt(2*x-1)")
+
+    assert result["success"] is True
+    assert result["answer"] == ["2"]
+    assert result["verified"] is True
+
+
+def test_reciprocal_square_root_equation():
+    result = solve_math("1/sqrt(x+1)=1")
+
+    assert result["success"] is True
+    assert result["answer"] == ["0"]
+    assert result["verified"] is True
+
+
+def test_square_root_equation_rejects_denominator_zero():
+    result = solve_math("sqrt(x+1)/(x+1)=0")
+
+    assert result["success"] is True
+    assert result["answer"] == []
+    assert result["verified"] is True
 
 
 def test_linear_equation():

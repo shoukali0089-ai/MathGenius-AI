@@ -44,6 +44,27 @@ def parse_node(node, depth=0):
         if node.id == "x":
             return x
         raise ValueError("Only the variable x is supported.")
+    if isinstance(node, ast.Call):
+        if (
+            not isinstance(node.func, ast.Name)
+            or node.func.id != "sqrt"
+            or len(node.args) != 1
+            or node.keywords
+        ):
+            raise ValueError(
+                "Only sqrt() with one argument is supported."
+            )
+
+        argument_node = node.args[0]
+
+        if any(
+            isinstance(child, ast.Call)
+            for child in ast.walk(argument_node)
+        ):
+            raise ValueError("Nested function calls are not supported.")
+
+        argument = parse_node(argument_node, depth + 1)
+        return sp.sqrt(argument)
 
     if isinstance(node, ast.UnaryOp):
         value = parse_node(node.operand, depth + 1)
@@ -320,9 +341,9 @@ def build_equation_steps(lhs, rhs, solutions):
 
         return steps
 
-   
-    
-   
+
+
+
     if degree == 3:
         standard = polynomial.as_expr()
         factorized = sp.factor(standard)
@@ -416,7 +437,7 @@ def build_equation_steps(lhs, rhs, solutions):
             return steps
 
         # Case 2: One linear factor and one quadratic factor
-    
+
         factor_degrees = [
             sp.Poly(factor, x).degree()
             for factor, multiplicity in factor_data
@@ -860,8 +881,8 @@ def build_equation_step_formulas(lhs, rhs, solutions):
 
         return formulas
 
-    
-    
+
+
     if degree == 3:
         standard = polynomial.as_expr()
         factorized = sp.factor(standard)
@@ -1356,7 +1377,108 @@ def solve_math(problem: str) -> dict:
                     "verified": True,
                     "message": "No solutions exist for this equation.",
                 }
+            # Handle square-root equations separately over the real numbers.
+            has_square_root = any(
+                power.exp in (
+                    sp.Rational(1, 2),
+                    sp.Rational(-1, 2),
+                )
+                for expression in (lhs, rhs)
+                for power in expression.atoms(sp.Pow)
+            )
 
+            if has_square_root:
+                try:
+                    radical_result = sp.solveset(
+                        lhs - rhs,
+                        x,
+                        domain=sp.S.Reals,
+                    )
+                except (NotImplementedError, ValueError):
+                    raise ValueError(
+                        "Unable to solve this square-root equation exactly."
+                    )
+
+                if radical_result == sp.EmptySet:
+                    radical_solutions = []
+
+                elif isinstance(radical_result, sp.FiniteSet):
+                    radical_solutions = sorted(
+                        radical_result,
+                        key=sp.default_sort_key,
+                    )
+
+                else:
+                    raise ValueError(
+                        "This square-root equation is not yet supported."
+                    )
+
+                valid_solutions = []
+
+                for item in radical_solutions:
+                    verification = sp.checksol(
+                        lhs - rhs,
+                        x,
+                        item,
+                    )
+
+                    if verification is False:
+                        continue
+
+                    if verification is not True:
+                        raise ValueError(
+                            "Unable to verify a square-root solution."
+                        )
+
+                    denominator_invalid = False
+
+                    for restriction in denominator_restrictions:
+                        denominator_value = sp.simplify(
+                            restriction.subs(x, item)
+                        )
+
+                        is_zero = denominator_value.equals(0)
+
+                        if is_zero is None:
+                            raise ValueError(
+                                "Unable to verify a denominator restriction."
+                            )
+
+                        if is_zero:
+                            denominator_invalid = True
+                            break
+
+                    if not denominator_invalid:
+                        valid_solutions.append(item)
+
+                answer = [
+                    format_value(item)
+                    for item in valid_solutions
+                ]
+
+                return {
+                    "success": True,
+                    "type": "equation",
+                    "problem": problem,
+                    "answer": answer,
+                    "answer_formulas": [
+                        sp.latex(item)
+                        for item in valid_solutions
+                    ],
+                    "answer_approximations": [
+                        str(sp.N(item, 10))
+                        for item in valid_solutions
+                    ],
+                    "steps": [],
+                    "step_formulas": [],
+                    "verified": True,
+                    "message": (
+                        "Square-root equation solved successfully. "
+                        "Detailed steps are not currently available."
+                        if valid_solutions
+                        else "No real solutions exist for this equation."
+                    ),
+                }
             # Combine rational expressions and solve the numerator.
             combined_equation = sp.together(lhs - rhs)
             numerator, denominator = combined_equation.as_numer_denom()
