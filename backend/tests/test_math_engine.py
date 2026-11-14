@@ -320,6 +320,63 @@ def test_factorable_quartic_equation_has_detailed_steps():
         "Factorize the polynomial" in step
         for step in result["steps"]
     )
+
+
+def test_rational_equation_with_cancelled_factor_has_detailed_steps():
+    result = solve_math("(x^2-1)/(x-1)=0")
+
+    assert result["success"] is True
+    assert result["answer"] == ["-1"]
+    assert result["verified"] is True
+
+    assert any(
+        "x cannot equal 1" in step
+        for step in result["steps"]
+    )
+
+    assert any(
+        "Reject x = 1" in step
+        for step in result["steps"]
+    )
+
+    assert len(result["steps"]) == len(result["step_formulas"])
+
+
+def test_rational_equation_linear_solution_has_detailed_steps():
+    result = solve_math("1/(x-1)=2")
+
+    assert result["answer"] == ["3/2"]
+    assert result["verified"] is True
+    assert len(result["steps"]) > 0
+    assert len(result["steps"]) == len(result["step_formulas"])
+
+    assert any(
+        "Accept x = 3/2" in step
+        for step in result["steps"]
+    )
+
+
+def test_rational_equation_rejects_only_candidate_due_to_denominator():
+    result = solve_math(
+        "1/(x-1)=1/(x-1)+(x-1)"
+    )
+
+    assert result["answer"] == []
+    assert result["verified"] is False
+
+    assert any(
+        "Reject x = 1" in step
+        for step in result["steps"]
+    )
+
+    assert any(
+        "No candidates satisfy" in step
+        for step in result["steps"]
+    )
+
+    assert len(result["steps"]) == len(result["step_formulas"])
+
+
 def test_factorable_quartic_equation_with_repeated_roots():
     result = solve_math("x^4 - 2*x^3 + x^2 = 0")
 

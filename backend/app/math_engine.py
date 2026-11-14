@@ -1344,6 +1344,221 @@ def build_equation_step_formulas(lhs, rhs, solutions):
     return []
 
 
+def build_rational_equation_steps(
+    lhs,
+    rhs,
+    numerator,
+    denominator,
+    denominator_restrictions,
+    solutions,
+):
+    """Build detailed steps for supported rational equations."""
+
+    if not denominator_restrictions:
+        return None
+
+    try:
+        polynomial = sp.Poly(
+            sp.expand(numerator),
+            x,
+        )
+
+        if polynomial.degree() < 1:
+            return None
+
+        candidates = sp.solve(
+            polynomial.as_expr(),
+            x,
+        )
+
+        if not isinstance(candidates, list) or not candidates:
+            return None
+
+    except (sp.PolynomialError, NotImplementedError, ValueError):
+        return None
+
+    excluded_values = set()
+
+    try:
+        for restriction in denominator_restrictions:
+            restriction_roots = sp.solve(restriction, x)
+
+            if not isinstance(restriction_roots, list):
+                return None
+
+            excluded_values.update(
+                sp.simplify(value)
+                for value in restriction_roots
+            )
+
+    except (NotImplementedError, ValueError):
+        return None
+
+    valid_values = {
+        sp.simplify(value)
+        for value in solutions
+    }
+
+    steps = []
+    formulas = []
+
+    steps.append(
+        "Write down the original rational equation."
+    )
+    formulas.append(
+        sp.latex(lhs) + " = " + sp.latex(rhs)
+    )
+
+    if excluded_values:
+        excluded_text = ", ".join(
+            format_value(value)
+            for value in sorted(
+                excluded_values,
+                key=sp.default_sort_key,
+            )
+        )
+
+        steps.append(
+            "Identify denominator restrictions: "
+            f"x cannot equal {excluded_text}."
+        )
+
+        formulas.append(
+            r"x \ne "
+            + r",\quad x \ne ".join(
+                sp.latex(value)
+                for value in sorted(
+                    excluded_values,
+                    key=sp.default_sort_key,
+                )
+            )
+        )
+
+    else:
+        return None
+
+    steps.append(
+        "Combine the equation into a single rational expression."
+    )
+
+    formulas.append(
+        r"\frac{"
+        + sp.latex(numerator)
+        + r"}{"
+        + sp.latex(denominator)
+        + r"} = 0"
+    )
+
+    steps.append(
+        "Set the numerator equal to zero, while keeping "
+        "the denominator restrictions."
+    )
+
+    formulas.append(
+        sp.latex(numerator) + " = 0"
+    )
+
+    candidate_text = ", ".join(
+        format_value(value)
+        for value in candidates
+    )
+
+    steps.append(
+        f"Solving the numerator equation gives candidates: "
+        f"{candidate_text}."
+    )
+
+    formulas.append(
+        r"x \in \left\{"
+        + ", ".join(
+            sp.latex(value)
+            for value in candidates
+        )
+        + r"\right\}"
+    )
+
+    for candidate in candidates:
+        value = sp.simplify(candidate)
+
+        is_excluded = any(
+            sp.simplify(value - excluded) == 0
+            for excluded in excluded_values
+        )
+
+        if is_excluded:
+            steps.append(
+                f"Reject x = {format_value(value)} because "
+                "it makes an original denominator zero."
+            )
+
+            formulas.append(
+                r"x = "
+                + sp.latex(value)
+                + r"\quad \Rightarrow \quad "
+                r"\text{Invalid}"
+            )
+
+        else:
+            verification = sp.checksol(
+                lhs - rhs,
+                x,
+                value,
+            )
+
+            if verification is not True or value not in valid_values:
+                return None
+
+            steps.append(
+                f"Accept x = {format_value(value)} because "
+                "it satisfies the original equation."
+            )
+
+            formulas.append(
+                r"x = "
+                + sp.latex(value)
+                + r"\quad \Rightarrow \quad "
+                r"\text{Valid}"
+            )
+
+    if valid_values:
+        final_values = sorted(
+            valid_values,
+            key=sp.default_sort_key,
+        )
+
+        final_text = ", ".join(
+            format_value(value)
+            for value in final_values
+        )
+
+        steps.append(
+            f"Final solution: x = {final_text}."
+        )
+
+        formulas.append(
+            r"x = "
+            + r",\quad x = ".join(
+                sp.latex(value)
+                for value in final_values
+            )
+        )
+
+    else:
+        steps.append(
+            "No candidates satisfy the original rational equation. "
+            "Therefore, no solutions exist."
+        )
+
+        formulas.append(
+            r"\text{No solutions}"
+        )
+
+    if len(steps) != len(formulas):
+        return None
+
+    return steps, formulas
+
+
 def solve_math(problem: str) -> dict:
     if not isinstance(problem, str):
         raise ValueError("Problem must be text.")
@@ -1672,24 +1887,44 @@ def solve_math(problem: str) -> dict:
                 for item in solutions
             )
 
-            try:
-                steps = build_equation_steps(
-                    lhs,
-                    rhs,
-                    solutions,
-                )
-            except (sp.PolynomialError, ValueError, TypeError):
-                steps = []
+            rational_steps = build_rational_equation_steps(
+                lhs,
+                rhs,
+                numerator,
+                denominator,
+                denominator_restrictions,
+                solutions,
+            )
 
-            try:
-                step_formulas = build_equation_step_formulas(
-                    lhs,
-                    rhs,
-                    solutions,
-                )
-            except (sp.PolynomialError, ValueError, TypeError):
-                step_formulas = []
+            if rational_steps is not None:
+                steps, step_formulas = rational_steps
 
+            else:
+                try:
+                    steps = build_equation_steps(
+                        lhs,
+                        rhs,
+                        solutions,
+                    )
+                except (
+                    sp.PolynomialError,
+                    ValueError,
+                    TypeError,
+                ):
+                    steps = []
+
+                try:
+                    step_formulas = build_equation_step_formulas(
+                        lhs,
+                        rhs,
+                        solutions,
+                    )
+                except (
+                    sp.PolynomialError,
+                    ValueError,
+                    TypeError,
+                ):
+                    step_formulas = []
             detailed_steps_available = bool(steps) and (
                 len(steps) == len(step_formulas)
             )
