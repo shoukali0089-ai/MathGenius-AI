@@ -354,3 +354,41 @@ def test_biquadratic_quartic_equation_with_complex_roots():
         for step in result["steps"]
     )
     assert all("I" in answer for answer in result["answer"])
+
+def test_simple_square_root_equation_has_detailed_steps():
+    result = solve_math("sqrt(x+5)=4")
+
+    assert result["success"] is True
+    assert result["answer"] == ["11"]
+    assert result["verified"] is True
+    assert len(result["steps"]) > 0
+    assert len(result["steps"]) == len(result["step_formulas"])
+    assert any(
+        "Square both sides" in step
+        for step in result["steps"]
+    )
+    assert result["steps"][-1] == "Final solution: x = 11."
+
+
+def test_square_root_equation_rejects_extraneous_root_in_steps():
+    result = solve_math("sqrt(x+1)=x-1")
+
+    assert result["answer"] == ["3"]
+    assert result["verified"] is True
+    assert len(result["steps"]) == len(result["step_formulas"])
+    assert any(
+        "Reject x = 0" in step
+        for step in result["steps"]
+    )
+    assert result["steps"][-1] == "Final solution: x = 3."
+
+
+def test_square_root_equation_with_no_solution_has_correct_steps():
+    result = solve_math("sqrt(x+1)=-2")
+
+    assert result["answer"] == []
+    assert result["verified"] is True
+    assert len(result["steps"]) > 0
+    assert len(result["steps"]) == len(result["step_formulas"])
+    assert "no real solutions exist" in result["steps"][-1].lower()
+    assert result["step_formulas"][-1] == r"\text{No real solutions}"

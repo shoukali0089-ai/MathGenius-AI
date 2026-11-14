@@ -257,6 +257,127 @@ def get_cardano_cubic_roots(polynomial):
 
     return roots
 
+def build_radical_equation_steps(lhs, rhs, solutions):
+    """Build detailed steps for a simple square root on the left side."""
+
+    if not (
+        isinstance(lhs, sp.Pow)
+        and lhs.exp == sp.Rational(1, 2)
+        and not rhs.has(sp.sqrt(x))
+    ):
+        return None
+
+    radicand = lhs.base
+
+    try:
+        sp.Poly(radicand, x)
+        sp.Poly(rhs, x)
+    except sp.PolynomialError:
+        return None
+
+    squared_equation = sp.expand(radicand - rhs**2)
+
+    try:
+        candidates = sp.solve(squared_equation, x)
+    except (NotImplementedError, ValueError):
+        return None
+
+    if not isinstance(candidates, list) or not candidates:
+        return None
+
+    valid_values = {
+        sp.simplify(solution) for solution in solutions
+    }
+
+    steps = []
+    formulas = []
+
+    steps.append(
+        "Since a square root is non-negative, "
+        "the right-hand side must also be non-negative."
+    )
+    formulas.append(
+        rf"\sqrt{{{sp.latex(radicand)}}}={sp.latex(rhs)},"
+        rf"\quad {sp.latex(rhs)}\geq 0"
+    )
+
+    steps.append("Square both sides of the equation.")
+    formulas.append(
+        rf"{sp.latex(radicand)}="
+        rf"\left({sp.latex(rhs)}\right)^2"
+    )
+
+    steps.append(
+        "Expand and simplify the resulting equation."
+    )
+    formulas.append(
+        rf"{sp.latex(squared_equation)}=0"
+    )
+
+    candidate_text = ", ".join(
+        format_value(candidate) for candidate in candidates
+    )
+
+    steps.append(
+        f"Solving the squared equation gives candidates: "
+        f"{candidate_text}."
+    )
+    formulas.append(
+        rf"x\in\left\{{{', '.join(sp.latex(c) for c in candidates)}"
+        rf"\right\}}"
+    )
+
+    for candidate in candidates:
+        value = sp.simplify(candidate)
+
+        if value in valid_values:
+            steps.append(
+                f"Substitute x = {format_value(value)} "
+                "into the original equation. It is valid."
+            )
+            formulas.append(
+                rf"\sqrt{{{sp.latex(radicand.subs(x, value))}}}"
+                rf"={sp.latex(rhs.subs(x, value))}"
+            )
+        else:
+            steps.append(
+                f"Reject x = {format_value(value)} because it "
+                "does not satisfy the original equation."
+            )
+            formulas.append(
+                rf"\sqrt{{{sp.latex(radicand.subs(x, value))}}}"
+                rf"\ne {sp.latex(rhs.subs(x, value))}"
+            )
+
+    if valid_values:
+        sorted_values = sorted(
+            valid_values,
+            key=sp.default_sort_key,
+        )
+
+        answer_text = ", ".join(
+            format_value(value)
+            for value in sorted_values
+        )
+
+        steps.append(
+            f"Final solution: x = {answer_text}."
+        )
+        formulas.append(
+            rf"x\in\left\{{{', '.join(sp.latex(v) for v in sorted_values)}"
+            rf"\right\}}"
+        )
+    else:
+        steps.append(
+            "None of the candidates satisfies the original equation. "
+            "Therefore, no real solutions exist."
+        )
+        formulas.append(
+            r"\text{No real solutions}"
+        )
+
+    return steps, formulas
+
 
 def build_equation_steps(lhs, rhs, solutions):
     """Create genuine steps for supported linear, quadratic and cubic equations."""
@@ -1456,6 +1577,18 @@ def solve_math(problem: str) -> dict:
                     for item in valid_solutions
                 ]
 
+                radical_steps = build_radical_equation_steps(
+                    lhs,
+                    rhs,
+                    valid_solutions,
+                )
+
+                if radical_steps is None:
+                    steps = []
+                    step_formulas = []
+                else:
+                    steps, step_formulas = radical_steps
+
                 return {
                     "success": True,
                     "type": "equation",
@@ -1469,16 +1602,21 @@ def solve_math(problem: str) -> dict:
                         str(sp.N(item, 10))
                         for item in valid_solutions
                     ],
-                    "steps": [],
-                    "step_formulas": [],
+                    "steps": steps,
+                    "step_formulas": step_formulas,
                     "verified": True,
                     "message": (
-                        "Square-root equation solved successfully. "
-                        "Detailed steps are not currently available."
-                        if valid_solutions
-                        else "No real solutions exist for this equation."
+                        "Square-root equation solved successfully."
+                        if valid_solutions and steps
+                        else (
+                            "Square-root equation solved successfully. "
+                            "Detailed steps are not currently available."
+                            if valid_solutions
+                            else "No real solutions exist for this equation."
+                        )
                     ),
                 }
+
             # Combine rational expressions and solve the numerator.
             combined_equation = sp.together(lhs - rhs)
             numerator, denominator = combined_equation.as_numer_denom()
