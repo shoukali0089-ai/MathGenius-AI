@@ -335,6 +335,20 @@ def build_radical_equation_steps(lhs, rhs, solutions):
         return None
 
     radicand = lhs.base
+    # A square root cannot equal a negative constant.
+    if rhs.is_number and rhs.is_negative is True:
+        return (
+            [
+                "A square root is always non-negative.",
+                "The right-hand side is a negative constant.",
+                "Therefore, no real solutions exist.",
+            ],
+            [
+                rf"\sqrt{{{sp.latex(radicand)}}}\geq 0",
+                rf"{sp.latex(rhs)}<0",
+                r"\text{No real solutions}",
+            ],
+        )
 
     try:
         sp.Poly(radicand, x)
@@ -444,8 +458,6 @@ def build_radical_equation_steps(lhs, rhs, solutions):
         )
 
     return steps, formulas
-
-
 def build_multiple_radical_equation_steps(lhs, rhs, solutions):
     """Build steps for two narrowly supported multiple-radical patterns."""
 
@@ -492,8 +504,109 @@ def build_multiple_radical_equation_steps(lhs, rhs, solutions):
             ),
             rf"{sp.latex(a)}={sp.latex(b)}",
         ]
+    # Pattern 2: sqrt(A) + sqrt(B) = 0
+    elif (
+        rhs.is_zero is True
+        and (
+            (
+                isinstance(lhs, sp.Add)
+                and len(lhs.args) == 2
+                and all(
+                    isinstance(term, sp.Pow)
+                    and term.exp == sqrt_power
+                    for term in lhs.args
+                )
+            )
+            or (
+                isinstance(lhs, sp.Mul)
+                and len(lhs.args) == 2
+                and sp.Integer(2) in lhs.args
+                and any(
+                    isinstance(term, sp.Pow)
+                    and term.exp == sqrt_power
+                    for term in lhs.args
+                )
+            )
+        )
+    ):
+        if isinstance(lhs, sp.Add):
+            terms = sorted(lhs.args, key=sp.default_sort_key)
+            a = terms[0].base
+            b = terms[1].base
+        else:
+            radical = next(
+                term for term in lhs.args
+                if isinstance(term, sp.Pow)
+                and term.exp == sqrt_power
+            )
+            a = radical.base
+            b = a
 
-    # Pattern 2: sqrt(A) + sqrt(B) = positive numeric constant
+        try:
+            sp.Poly(a, x)
+            sp.Poly(b, x)
+        except sp.PolynomialError:
+            return None
+
+        same_radicand = sp.simplify(a - b) == 0
+
+        if sp.simplify(a) != 0:
+            candidate_equation = a
+        elif sp.simplify(b) != 0:
+            candidate_equation = b
+        else:
+            return None
+
+        if same_radicand:
+            method_steps = [
+                (
+                    "Both square-root terms are non-negative. "
+                    "Their sum can equal zero only when both terms are zero."
+                ),
+                "Set the radicand equal to zero to find candidates.",
+                (
+                    "Check each candidate in the original equation "
+                    "to ensure it is valid."
+                ),
+            ]
+            method_formulas = [
+                (
+                    rf"{sp.latex(lhs)}=0"
+                    rf"\quad\Longrightarrow\quad "
+                    rf"{sp.latex(a)}=0"
+                ),
+                rf"{sp.latex(a)}=0",
+                rf"\sqrt{{{sp.latex(a)}}}=0",
+            ]
+        else:
+            method_steps = [
+                (
+                    "Both square roots are non-negative. "
+                    "Their sum can equal zero only when both "
+                    "square roots are zero."
+                ),
+                "Set both radicands equal to zero to find candidates.",
+                (
+                    "Check each candidate in the original equation "
+                    "to ensure it is valid."
+                ),
+            ]
+            method_formulas = [
+                (
+                    rf"{sp.latex(lhs)}=0"
+                    rf"\quad\Longrightarrow\quad "
+                    rf"{sp.latex(a)}=0,\quad {sp.latex(b)}=0"
+                ),
+                (
+                    rf"{sp.latex(a)}=0,\quad "
+                    rf"{sp.latex(b)}=0"
+                ),
+                (
+                    rf"\sqrt{{{sp.latex(a)}}}=0,\quad "
+                    rf"\sqrt{{{sp.latex(b)}}}=0"
+                ),
+            ]
+    # Pattern 3: sqrt(A) + sqrt(B) = positive numeric constant
     elif (
         isinstance(lhs, sp.Add)
         and len(lhs.args) == 2

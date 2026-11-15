@@ -496,6 +496,15 @@ def test_square_root_equation_rejects_extraneous_root_in_steps():
 def test_square_root_equation_with_no_solution_has_correct_steps():
     result = solve_math("sqrt(x+1)=-2")
 
+    assert result["steps"] == [
+        "A square root is always non-negative.",
+        "The right-hand side is a negative constant.",
+        "Therefore, no real solutions exist.",
+    ]
+    assert not any(
+        "Square both sides" in step
+        for step in result["steps"]
+    )
     assert result["answer"] == []
     assert result["verified"] is True
     assert len(result["steps"]) > 0
@@ -560,6 +569,44 @@ def test_two_square_root_formulas_show_multiplication_signs():
         for formula in formulas
     )
     assert len(result["steps"]) == len(formulas)
+
+def test_zero_rhs_multiple_radicals_with_boundary_solution():
+    result = solve_math("sqrt(x)+sqrt(x)=0")
+
+    assert result["success"] is True
+    assert result["answer"] == ["0"]
+    assert result["verified"] is True
+    assert len(result["steps"]) > 0
+    assert len(result["steps"]) == len(result["step_formulas"])
+    assert result["steps"][0].startswith("Both square-root terms")
+    assert any(
+        r"2 \sqrt{x}=0" in formula
+        for formula in result["step_formulas"]
+    )
+    assert result["steps"][-1] == "Final solution: x = 0."
+
+
+def test_zero_rhs_multiple_radicals_without_common_zero():
+    result = solve_math("sqrt(x)+sqrt(x+1)=0")
+
+    assert result["success"] is True
+    assert result["answer"] == []
+    assert result["verified"] is True
+    assert len(result["steps"]) > 0
+    assert len(result["steps"]) == len(result["step_formulas"])
+    assert any(
+        "Set both radicands equal to zero" in step
+        for step in result["steps"]
+    )
+    assert any(
+        r"x=0" in formula and r"x + 1=0" in formula
+        for formula in result["step_formulas"]
+    )
+    assert any(
+        "Reject x = 0" in step
+        for step in result["steps"]
+    )
+    assert "no real solutions exist" in result["steps"][-1].lower()
 
 
 def test_multiple_radicals_reject_extraneous_candidate_and_format_radicand():
