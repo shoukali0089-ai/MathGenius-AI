@@ -502,3 +502,61 @@ def test_square_root_equation_with_no_solution_has_correct_steps():
     assert len(result["steps"]) == len(result["step_formulas"])
     assert "no real solutions exist" in result["steps"][-1].lower()
     assert result["step_formulas"][-1] == r"\text{No real solutions}"
+
+
+def test_equal_square_roots_have_detailed_steps():
+    result = solve_math("sqrt(x+4)=sqrt(2*x+1)")
+
+    assert result["success"] is True
+    assert result["answer"] == ["3"]
+    assert result["verified"] is True
+    assert len(result["steps"]) > 0
+    assert len(result["steps"]) == len(result["step_formulas"])
+    assert any(
+        "domain conditions" in step.lower()
+        for step in result["steps"]
+    )
+    assert result["steps"][-1] == "Final solution: x = 3."
+
+
+@pytest.mark.parametrize(
+    ("problem", "expected_answer"),
+    [
+        ("sqrt(x+1)+sqrt(x-2)=3", ["3"]),
+        ("sqrt(x+1)+sqrt(x)=1", ["0"]),
+    ],
+)
+def test_sum_of_two_square_roots_has_detailed_steps(
+    problem,
+    expected_answer,
+):
+    result = solve_math(problem)
+
+    assert result["success"] is True
+    assert result["answer"] == expected_answer
+    assert result["verified"] is True
+    assert len(result["steps"]) > 0
+    assert len(result["steps"]) == len(result["step_formulas"])
+    assert any(
+        "Square both sides" in step
+        for step in result["steps"]
+    )
+    assert result["steps"][-1].startswith("Final solution:")
+
+
+def test_two_square_root_formulas_show_multiplication_signs():
+    result = solve_math("sqrt(x+1)+sqrt(x-2)=3")
+
+    assert result["verified"] is True
+
+    formulas = result["step_formulas"]
+
+    assert any(
+        r"2\cdot 3\cdot" in formula
+        for formula in formulas
+    )
+    assert any(
+        r"4\cdot 9\cdot" in formula
+        for formula in formulas
+    )
+    assert len(result["steps"]) == len(formulas)

@@ -446,6 +446,205 @@ def build_radical_equation_steps(lhs, rhs, solutions):
     return steps, formulas
 
 
+def build_multiple_radical_equation_steps(lhs, rhs, solutions):
+    """Build steps for two narrowly supported multiple-radical patterns."""
+
+    sqrt_power = sp.Rational(1, 2)
+
+    valid_values = {
+        sp.simplify(solution)
+        for solution in solutions
+    }
+
+    # Pattern 1: sqrt(A) = sqrt(B)
+    if (
+        isinstance(lhs, sp.Pow)
+        and lhs.exp == sqrt_power
+        and isinstance(rhs, sp.Pow)
+        and rhs.exp == sqrt_power
+    ):
+        a = lhs.base
+        b = rhs.base
+
+        try:
+            sp.Poly(a, x)
+            sp.Poly(b, x)
+        except sp.PolynomialError:
+            return None
+
+        candidate_equation = sp.expand(a - b)
+
+        method_steps = [
+            (
+                "Both sides are square roots. Since principal "
+                "square roots are non-negative, equate their "
+                "radicands while respecting both domain conditions."
+            ),
+            "Set the two radicands equal and simplify.",
+        ]
+
+        method_formulas = [
+            (
+                rf"\sqrt{{{sp.latex(a)}}}="
+                rf"\sqrt{{{sp.latex(b)}}},\quad "
+                rf"{sp.latex(a)}\geq 0,\ "
+                rf"{sp.latex(b)}\geq 0"
+            ),
+            rf"{sp.latex(a)}={sp.latex(b)}",
+        ]
+
+    # Pattern 2: sqrt(A) + sqrt(B) = positive numeric constant
+    elif (
+        isinstance(lhs, sp.Add)
+        and len(lhs.args) == 2
+        and all(
+            isinstance(term, sp.Pow)
+            and term.exp == sqrt_power
+            for term in lhs.args
+        )
+        and rhs.is_number
+        and rhs.is_positive is True
+    ):
+        terms = sorted(lhs.args, key=sp.default_sort_key)
+
+        a = terms[0].base
+        b = terms[1].base
+        c = rhs
+
+        try:
+            sp.Poly(a, x)
+            sp.Poly(b, x)
+        except sp.PolynomialError:
+            return None
+
+        candidate_equation = sp.expand(
+            4 * c**2 * b - (c**2 + b - a)**2
+        )
+
+        method_steps = [
+            (
+                "Both radicands must be non-negative for the "
+                "original square roots to be real."
+            ),
+            (
+                "Isolate the first square root by moving the second "
+                "square root to the right side."
+            ),
+            "Square both sides of the isolated equation.",
+            "Rearrange to isolate the remaining square root.",
+            "Square again to obtain a polynomial equation.",
+        ]
+
+        method_formulas = [
+            (
+                rf"{sp.latex(a)}\geq 0,\quad "
+                rf"{sp.latex(b)}\geq 0"
+            ),
+            (
+                rf"\sqrt{{{sp.latex(a)}}}="
+                rf"{sp.latex(c)}-\sqrt{{{sp.latex(b)}}}"
+            ),
+            (
+                rf"{sp.latex(a)}="
+                rf"\left({sp.latex(c)}-"
+                rf"\sqrt{{{sp.latex(b)}}}\right)^2"
+            ),
+            (
+                rf"2\cdot {sp.latex(c)}\cdot \sqrt{{{sp.latex(b)}}}="
+                rf"{sp.latex(c**2 + b - a)}"
+            ),
+            (
+                rf"4\cdot {sp.latex(c**2)}\cdot {sp.latex(b)}="
+                rf"\left({sp.latex(c**2 + b - a)}\right)^2"
+            ),
+        ]
+
+    else:
+        return None
+
+    try:
+        candidates = sp.solve(candidate_equation, x)
+    except (NotImplementedError, ValueError, TypeError):
+        return None
+
+    if not isinstance(candidates, list) or not candidates:
+        return None
+
+    if not all(candidate.is_number for candidate in candidates):
+        return None
+
+    steps = list(method_steps)
+    formulas = list(method_formulas)
+
+    steps.append("Solve the resulting polynomial equation.")
+    formulas.append(
+        rf"{sp.latex(candidate_equation)}=0"
+    )
+
+    candidate_text = ", ".join(
+        format_value(candidate)
+        for candidate in candidates
+    )
+
+    steps.append(
+        f"The candidate solutions are: {candidate_text}."
+    )
+    formulas.append(
+        rf"x\in\left\{{{', '.join(sp.latex(c) for c in candidates)}"
+        rf"\right\}}"
+    )
+
+    for candidate in candidates:
+        value = sp.simplify(candidate)
+
+        if value in valid_values:
+            steps.append(
+                f"Substitute x = {format_value(value)} into the "
+                "original equation. It satisfies the equation "
+                "and all real-domain restrictions."
+            )
+            formulas.append(
+                rf"{sp.latex(lhs.subs(x, value))}"
+                rf"={sp.latex(rhs.subs(x, value))}"
+            )
+        else:
+            steps.append(
+                f"Reject x = {format_value(value)} because it "
+                "does not satisfy the original equation."
+            )
+            formulas.append(
+                rf"{sp.latex(lhs.subs(x, value))}"
+                rf"\ne {sp.latex(rhs.subs(x, value))}"
+            )
+
+    if valid_values:
+        sorted_values = sorted(
+            valid_values,
+            key=sp.default_sort_key,
+        )
+        answer_text = ", ".join(
+            format_value(value)
+            for value in sorted_values
+        )
+
+        steps.append(f"Final solution: x = {answer_text}.")
+        formulas.append(
+            rf"x\in\left\{{{', '.join(sp.latex(v) for v in sorted_values)}"
+            rf"\right\}}"
+        )
+    else:
+        steps.append(
+            "No candidates satisfy the original equation. "
+            "Therefore, no real solutions exist."
+        )
+        formulas.append(r"\text{No real solutions}")
+
+    if len(steps) != len(formulas):
+        return None
+
+    return steps, formulas
+
+
 def build_equation_steps(lhs, rhs, solutions):
     """Create genuine steps for supported linear, quadratic and cubic equations."""
 
@@ -1974,6 +2173,13 @@ def solve_math(problem: str) -> dict:
                     rhs,
                     valid_solutions,
                 )
+
+                if radical_steps is None:
+                    radical_steps = build_multiple_radical_equation_steps(
+                        lhs,
+                        rhs,
+                        valid_solutions,
+                    )
 
                 if radical_steps is None:
                     steps = []
