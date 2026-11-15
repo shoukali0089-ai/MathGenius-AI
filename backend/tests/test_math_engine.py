@@ -167,6 +167,8 @@ def test_cubic_equation_with_complex_roots_has_detailed_steps():
     assert len(result["steps"]) > 0
     assert len(result["steps"]) == len(result["step_formulas"])
     assert "successfully" in result["message"].lower()
+
+
 def test_identity_equation():
     result = solve_math("x-x=0")
 
@@ -174,6 +176,52 @@ def test_identity_equation():
     assert result["answer"] == ["All values of x"]
     assert result["verified"] is True
     assert "infinitely many" in result["message"].lower()
+    assert len(result["steps"]) == len(result["step_formulas"])
+
+
+def test_square_root_identity_respects_closed_domain():
+    result = solve_math("sqrt(x)=sqrt(x)")
+
+    assert result["success"] is True
+    assert result["answer"] == [
+        "All real values of x in [0, ∞)"
+    ]
+    assert result["verified"] is True
+    assert len(result["steps"]) == len(result["step_formulas"])
+
+
+def test_square_root_identity_excludes_zero_denominator():
+    result = solve_math("sqrt(x)/sqrt(x)=1")
+
+    assert result["success"] is True
+    assert result["answer"] == [
+        "All real values of x in (0, ∞)"
+    ]
+    assert result["verified"] is True
+    assert len(result["steps"]) == len(result["step_formulas"])
+
+
+def test_shifted_square_root_identity_respects_domain():
+    result = solve_math("sqrt(x+1)/sqrt(x+1)=1")
+
+    assert result["success"] is True
+    assert result["answer"] == [
+        "All real values of x in (-1, ∞)"
+    ]
+    assert result["verified"] is True
+    assert len(result["steps"]) == len(result["step_formulas"])
+
+
+def test_square_root_identity_with_empty_real_domain():
+    result = solve_math("sqrt(-1)=sqrt(-1)")
+
+    assert result["success"] is True
+    assert result["answer"] == [
+        "No real values of x satisfy the original domain restrictions"
+    ]
+    assert "no real values" in result["message"].lower()
+    assert "infinitely many" not in result["message"].lower()
+    assert result["verified"] is True
     assert len(result["steps"]) == len(result["step_formulas"])
 
 
@@ -307,8 +355,13 @@ def test_rational_equation_with_two_denominators():
 def test_rational_identity_excludes_zero_denominator():
     result = solve_math("(x-1)/(x-1)=1")
 
-    assert "x = 1" in result["answer"][0]
+    assert result["answer"] == [
+        "All real values of x in (-∞, 1) ∪ (1, ∞)"
+    ]
     assert result["verified"] is True
+    assert len(result["steps"]) == len(result["step_formulas"])
+
+
 def test_factorable_quartic_equation_has_detailed_steps():
     result = solve_math("x^4 - 5*x^2 + 4 = 0")
 

@@ -145,9 +145,76 @@ def get_denominator_restrictions(expression: str):
 
     return restrictions
 
+
+def get_square_root_radicands(expression: str):
+    """Collect radicands from supported sqrt() calls in an expression."""
+
+    prepared = prepare_expression(expression)
+
+    try:
+        tree = ast.parse(prepared, mode="eval")
+    except SyntaxError:
+        raise ValueError("Invalid mathematical expression.")
+
+    if sum(1 for _ in ast.walk(tree)) > 80:
+        raise ValueError("Expression is too complex.")
+
+    radicands = []
+
+    for node in ast.walk(tree):
+        if (
+            isinstance(node, ast.Call)
+            and isinstance(node.func, ast.Name)
+            and node.func.id == "sqrt"
+        ):
+            if len(node.args) != 1 or node.keywords:
+                raise ValueError(
+                    "Only sqrt() with one argument is supported."
+                )
+
+            radicands.append(parse_node(node.args[0]))
+
+    return radicands
+
+
 def format_value(value) -> str:
     return str(sp.simplify(value))
 
+
+def format_real_domain(domain) -> str:
+    """Format real intervals in a readable mathematical form."""
+
+    if domain == sp.S.Reals:
+        return "(-∞, ∞)"
+
+    if domain == sp.EmptySet:
+        return "∅"
+
+    if isinstance(domain, sp.Interval):
+        left_bracket = "(" if domain.left_open else "["
+        right_bracket = ")" if domain.right_open else "]"
+
+        left = (
+            "-∞" if domain.start == -sp.oo
+            else "∞" if domain.start == sp.oo
+            else format_value(domain.start)
+        )
+
+        right = (
+            "-∞" if domain.end == -sp.oo
+            else "∞" if domain.end == sp.oo
+            else format_value(domain.end)
+        )
+
+        return f"{left_bracket}{left}, {right}{right_bracket}"
+
+    if isinstance(domain, sp.Union):
+        return " ∪ ".join(
+            format_real_domain(part)
+            for part in domain.args
+        )
+
+    raise ValueError("Unable to format the calculated real domain.")
 
 def format_substitution(shift) -> str:
     shift = sp.simplify(shift)
@@ -1597,6 +1664,40 @@ def solve_math(problem: str) -> dict:
                 excluded_values = set()
                 unknown_restrictions = False
 
+                radicands = (
+                    get_square_root_radicands(left)
+                    + get_square_root_radicands(right)
+                )
+
+                allowed_domain = sp.S.Reals
+                unknown_domain = False
+
+                # Apply real-domain restrictions from every sqrt().
+                for radicand in radicands:
+                    try:
+                        radicand_domain = sp.solve_univariate_inequality(
+                            radicand >= 0,
+                            x,
+                            relational=False,
+                        )
+
+                        candidate_domain = sp.Intersection(
+                            allowed_domain,
+                            radicand_domain,
+                        )
+
+                        # Confirm that the result can be safely formatted.
+                        format_real_domain(candidate_domain)
+                        allowed_domain = candidate_domain
+
+                    except (
+                        NotImplementedError,
+                        ValueError,
+                        TypeError,
+                    ):
+                        unknown_domain = True
+
+                # Find values that make an original denominator zero.
                 for restriction in denominator_restrictions:
                     restriction_numerator = sp.together(
                         restriction
@@ -1629,10 +1730,40 @@ def solve_math(problem: str) -> dict:
                     key=sp.default_sort_key,
                 )
 
-                if unknown_restrictions:
+                # Remove denominator-zero values from the allowed domain.
+                if not unknown_domain and not unknown_restrictions:
+                    try:
+                        if excluded_values:
+                            allowed_domain = (
+                                allowed_domain
+                                - sp.FiniteSet(*excluded_values)
+                            )
+
+                        format_real_domain(allowed_domain)
+
+                    except (NotImplementedError, ValueError, TypeError):
+                        unknown_domain = True
+
+                unknown_constraints = (
+                    unknown_domain or unknown_restrictions
+                )
+
+                if unknown_constraints:
                     answer = [
-                        "All real values of x satisfying the original denominator restrictions"
+                        "All real values of x satisfying the original expression's domain restrictions"
                     ]
+
+                elif allowed_domain == sp.EmptySet:
+                    answer = [
+                        "No real values of x satisfy the original domain restrictions"
+                    ]
+
+                elif allowed_domain != sp.S.Reals:
+                    answer = [
+                        "All real values of x in "
+                        + format_real_domain(allowed_domain)
+                    ]
+
                 elif excluded_values:
                     excluded_text = ", ".join(
                         f"x = {format_value(item)}"
@@ -1642,6 +1773,7 @@ def solve_math(problem: str) -> dict:
                     answer = [
                         f"All real values of x except {excluded_text}"
                     ]
+
                 else:
                     answer = ["All values of x"]
 
@@ -1652,6 +1784,19 @@ def solve_math(problem: str) -> dict:
                 step_formulas = [
                     r"0 = 0",
                 ]
+
+                if radicands and not unknown_domain:
+                    domain_text = format_real_domain(allowed_domain)
+
+                    steps.append(
+                        "Every square-root radicand must be non-negative. "
+                        f"The allowed real domain is {domain_text}."
+                    )
+
+                    step_formulas.append(
+                        r"\text{Allowed real domain: }"
+                        + sp.latex(allowed_domain)
+                    )
 
                 if excluded_values:
                     excluded_text = ", ".join(
@@ -1672,15 +1817,50 @@ def solve_math(problem: str) -> dict:
                         )
                     )
 
-                steps.append(
-                    "The identity is true for every remaining "
-                    "allowed real value of x."
-                )
+                if unknown_constraints:
+                    steps.append(
+                        "The identity holds only where the original "
+                        "expressions are defined. The exact domain "
+                        "could not be determined."
+                    )
 
-                step_formulas.append(
-                    r"\text{True for all allowed } x"
-                )
+                    step_formulas.append(
+                        r"\text{Original expression domain required}"
+                    )
 
+                elif allowed_domain == sp.EmptySet:
+                    steps.append(
+                        "No real values satisfy all original domain restrictions."
+                    )
+
+                    step_formulas.append(
+                        r"\text{No real solutions}"
+                    )
+
+                else:
+                    steps.append(
+                        "The identity is true for every remaining "
+                        "allowed real value of x."
+                    )
+
+                    step_formulas.append(
+                        r"\text{True for all allowed } x"
+                    )
+                if unknown_constraints:
+                    identity_message = (
+                        "Identity equation; the exact real domain "
+                        "could not be determined."
+                    )
+                elif allowed_domain == sp.EmptySet:
+                    identity_message = (
+                        "Identity equation, but no real values satisfy "
+                        "the original expression's domain restrictions."
+                    )
+                else:
+                    identity_message = (
+                        "Identity equation: infinitely many "
+                        "allowed real solutions."
+                    )
                 return {
                     "success": True,
                     "type": "equation",
@@ -1689,10 +1869,7 @@ def solve_math(problem: str) -> dict:
                     "steps": steps,
                     "step_formulas": step_formulas,
                     "verified": True,
-                    "message": (
-                        "Identity equation: infinitely many "
-                        "allowed solutions."
-                    ),
+                    "message": identity_message,
                 }
 
             # Constant contradiction
