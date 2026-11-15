@@ -554,7 +554,8 @@ def build_multiple_radical_equation_steps(lhs, rhs, solutions):
                 rf"{sp.latex(c**2 + b - a)}"
             ),
             (
-                rf"4\cdot {sp.latex(c**2)}\cdot {sp.latex(b)}="
+                rf"4\cdot {sp.latex(c**2)}\cdot "
+                rf"\left({sp.latex(b)}\right)="
                 rf"\left({sp.latex(c**2 + b - a)}\right)^2"
             ),
         ]

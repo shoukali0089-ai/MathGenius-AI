@@ -560,3 +560,28 @@ def test_two_square_root_formulas_show_multiplication_signs():
         for formula in formulas
     )
     assert len(result["steps"]) == len(formulas)
+
+
+def test_multiple_radicals_reject_extraneous_candidate_and_format_radicand():
+    result = solve_math("sqrt(x+1)+sqrt(2*x+1)=2")
+
+    assert result["success"] is True
+    assert result["answer"] == ["0"]
+    assert result["verified"] is True
+
+    assert any(
+        "candidate solutions are: 0, 24" in step.lower()
+        for step in result["steps"]
+    )
+    assert any(
+        "Reject x = 24" in step
+        for step in result["steps"]
+    )
+    assert result["steps"][-1] == "Final solution: x = 0."
+
+    assert len(result["steps"]) == len(result["step_formulas"])
+
+    assert any(
+        r"4\cdot 4\cdot \left(2 x + 1\right)" in formula
+        for formula in result["step_formulas"]
+    )
