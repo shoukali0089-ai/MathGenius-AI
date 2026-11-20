@@ -4,7 +4,6 @@ import re
 
 import sympy as sp
 
-
 x = sp.Symbol("x")
 
 
@@ -33,7 +32,7 @@ def parse_node(node, depth=0):
 
     if isinstance(node, ast.Constant):
         if isinstance(node.value, bool):
-            raise ValueError("Boolean values are not supported.")
+            raise ValueError("Boolean values are not supported.")  # noqa: TRY004 - Boolean is invalid mathematical input.
 
         if isinstance(node.value, (int, float)):
             return sp.Rational(str(node.value))
@@ -1164,7 +1163,6 @@ def build_equation_steps(lhs, rhs, solutions):
 
             shift = sp.simplify(b / (3 * a))
             omega = (-1 + sp.sqrt(3) * sp.I) / 2
-            omega_squared = sp.conjugate(omega)
 
             steps.extend([
                 f"Write the cubic equation in standard form: {sp.sstr(polynomial.as_expr())} = 0.",
@@ -1556,8 +1554,10 @@ def build_equation_step_formulas(lhs, rhs, solutions):
                 + sp.latex(p) + r",\quad q = " + sp.latex(q),
                 r"D = -4p^3 - 27q^2 = "
                 + sp.latex(discriminant),
-                r"D > 0 \quad \Rightarrow \quad "
-                r"\text{three distinct real roots}",
+                (
+                    r"D > 0 \quad \Rightarrow \quad "
+                    r"\text{three distinct real roots}"
+                ),
                 r"t = " + sp.latex(amplitude)
                 + r"\cos(\theta),\quad \cos(3\theta) = "
                 + sp.latex(cosine_value),
@@ -1590,13 +1590,8 @@ def build_equation_step_formulas(lhs, rhs, solutions):
                 (q / 2)**2 + (p / 3)**3
             )
 
-            sqrt_delta = sp.sqrt(delta)
-            u = sp.real_root(-q / 2 + sqrt_delta, 3)
-            v = sp.real_root(-q / 2 - sqrt_delta, 3)
-
             shift = sp.simplify(b / (3 * a))
             omega = (-1 + sp.sqrt(3) * sp.I) / 2
-            omega_squared = sp.conjugate(omega)
 
             return [
                 sp.latex(polynomial.as_expr()) + r" = 0",
@@ -1606,8 +1601,10 @@ def build_equation_step_formulas(lhs, rhs, solutions):
                 r"\Delta = \left(\frac{q}{2}\right)^2"
                 + r" + \left(\frac{p}{3}\right)^3 = "
                 + sp.latex(delta),
-                r"\Delta > 0 \quad \Rightarrow \quad "
-                r"\text{one real root and two complex roots}",
+                (
+                    r"\Delta > 0 \quad \Rightarrow \quad "
+                    r"\text{one real root and two complex roots}"
+                ),
                 r"u = \sqrt[3]{-\frac{q}{2}+\sqrt{\Delta}},"
                 + r"\quad v = \sqrt[3]{-\frac{q}{2}-\sqrt{\Delta}}",
                 r"x_1 = u + v - " + sp.latex(shift)
@@ -1941,7 +1938,7 @@ def build_rational_equation_steps(
 
 def solve_math(problem: str) -> dict:
     if not isinstance(problem, str):
-        raise ValueError("Problem must be text.")
+        raise TypeError("Problem must be text.")
 
 
     problem = problem.strip()
@@ -1955,520 +1952,511 @@ def solve_math(problem: str) -> dict:
     if problem.count("=") > 1:
         raise ValueError("Only one equation is supported.")
 
-    try:
-        if "=" in problem:
-            left, right = problem.split("=")
+    if "=" in problem:
+        left, right = problem.split("=")
 
-            if not left.strip() or not right.strip():
-                raise ValueError("Invalid equation.")
+        if not left.strip() or not right.strip():
+            raise ValueError("Invalid equation.")
 
-            lhs = parse_math_expression(left)
-            rhs = parse_math_expression(right)
+        lhs = parse_math_expression(left)
+        rhs = parse_math_expression(right)
 
-            denominator_restrictions = (
-                get_denominator_restrictions(left)
-                + get_denominator_restrictions(right)
+        denominator_restrictions = (
+            get_denominator_restrictions(left)
+            + get_denominator_restrictions(right)
+        )
+
+        difference = sp.simplify(lhs - rhs)
+
+        # Identity equation: 0 = 0
+        if difference == 0:
+            excluded_values = set()
+            unknown_restrictions = False
+
+            radicands = (
+                get_square_root_radicands(left)
+                + get_square_root_radicands(right)
             )
 
-            difference = sp.simplify(lhs - rhs)
+            allowed_domain = sp.S.Reals
+            unknown_domain = False
 
-            # Identity equation: 0 = 0
-            if difference == 0:
-                excluded_values = set()
-                unknown_restrictions = False
-
-                radicands = (
-                    get_square_root_radicands(left)
-                    + get_square_root_radicands(right)
-                )
-
-                allowed_domain = sp.S.Reals
-                unknown_domain = False
-
-                # Apply real-domain restrictions from every sqrt().
-                for radicand in radicands:
-                    try:
-                        radicand_domain = sp.solve_univariate_inequality(
-                            radicand >= 0,
-                            x,
-                            relational=False,
-                        )
-
-                        candidate_domain = sp.Intersection(
-                            allowed_domain,
-                            radicand_domain,
-                        )
-
-                        # Confirm that the result can be safely formatted.
-                        format_real_domain(candidate_domain)
-                        allowed_domain = candidate_domain
-
-                    except (
-                        NotImplementedError,
-                        ValueError,
-                        TypeError,
-                    ):
-                        unknown_domain = True
-
-                # Find values that make an original denominator zero.
-                for restriction in denominator_restrictions:
-                    restriction_numerator = sp.together(
-                        restriction
-                    ).as_numer_denom()[0]
-
-                    try:
-                        restriction_solutions = sp.solveset(
-                            restriction_numerator,
-                            x,
-                            domain=sp.S.Reals,
-                        )
-
-                        if isinstance(
-                            restriction_solutions,
-                            sp.FiniteSet,
-                        ):
-                            excluded_values.update(
-                                sp.simplify(item)
-                                for item in restriction_solutions
-                            )
-
-                        elif restriction_solutions != sp.EmptySet:
-                            unknown_restrictions = True
-
-                    except (NotImplementedError, ValueError):
-                        unknown_restrictions = True
-
-                excluded_values = sorted(
-                    excluded_values,
-                    key=sp.default_sort_key,
-                )
-
-                # Remove denominator-zero values from the allowed domain.
-                if not unknown_domain and not unknown_restrictions:
-                    try:
-                        if excluded_values:
-                            allowed_domain = (
-                                allowed_domain
-                                - sp.FiniteSet(*excluded_values)
-                            )
-
-                        format_real_domain(allowed_domain)
-
-                    except (NotImplementedError, ValueError, TypeError):
-                        unknown_domain = True
-
-                unknown_constraints = (
-                    unknown_domain or unknown_restrictions
-                )
-
-                if unknown_constraints:
-                    answer = [
-                        "All real values of x satisfying the original expression's domain restrictions"
-                    ]
-
-                elif allowed_domain == sp.EmptySet:
-                    answer = [
-                        "No real values of x satisfy the original domain restrictions"
-                    ]
-
-                elif allowed_domain != sp.S.Reals:
-                    answer = [
-                        "All real values of x in "
-                        + format_real_domain(allowed_domain)
-                    ]
-
-                elif excluded_values:
-                    excluded_text = ", ".join(
-                        f"x = {format_value(item)}"
-                        for item in excluded_values
-                    )
-
-                    answer = [
-                        f"All real values of x except {excluded_text}"
-                    ]
-
-                else:
-                    answer = ["All values of x"]
-
-                steps = [
-                    "Simplify both sides: 0 = 0",
-                ]
-
-                step_formulas = [
-                    r"0 = 0",
-                ]
-
-                if radicands and not unknown_domain:
-                    domain_text = format_real_domain(allowed_domain)
-
-                    steps.append(
-                        "Every square-root radicand must be non-negative. "
-                        f"The allowed real domain is {domain_text}."
-                    )
-
-                    step_formulas.append(
-                        r"\text{Allowed real domain: }"
-                        + sp.latex(allowed_domain)
-                    )
-
-                if excluded_values:
-                    excluded_text = ", ".join(
-                        f"x = {format_value(item)}"
-                        for item in excluded_values
-                    )
-
-                    steps.append(
-                        "Exclude these values because they make "
-                        f"an original denominator zero: {excluded_text}."
-                    )
-
-                    step_formulas.append(
-                        r"\text{Excluded values: } "
-                        + r",\ ".join(
-                            sp.latex(item)
-                            for item in excluded_values
-                        )
-                    )
-
-                if unknown_constraints:
-                    steps.append(
-                        "The identity holds only where the original "
-                        "expressions are defined. The exact domain "
-                        "could not be determined."
-                    )
-
-                    step_formulas.append(
-                        r"\text{Original expression domain required}"
-                    )
-
-                elif allowed_domain == sp.EmptySet:
-                    steps.append(
-                        "No real values satisfy all original domain restrictions."
-                    )
-
-                    step_formulas.append(
-                        r"\text{No real solutions}"
-                    )
-
-                else:
-                    steps.append(
-                        "The identity is true for every remaining "
-                        "allowed real value of x."
-                    )
-
-                    step_formulas.append(
-                        r"\text{True for all allowed } x"
-                    )
-                if unknown_constraints:
-                    identity_message = (
-                        "Identity equation; the exact real domain "
-                        "could not be determined."
-                    )
-                elif allowed_domain == sp.EmptySet:
-                    identity_message = (
-                        "Identity equation, but no real values satisfy "
-                        "the original expression's domain restrictions."
-                    )
-                else:
-                    identity_message = (
-                        "Identity equation: infinitely many "
-                        "allowed real solutions."
-                    )
-                return {
-                    "success": True,
-                    "type": "equation",
-                    "problem": problem,
-                    "answer": answer,
-                    "steps": steps,
-                    "step_formulas": step_formulas,
-                    "verified": True,
-                    "message": identity_message,
-                }
-
-            # Constant contradiction
-            if not difference.has(x):
-                return {
-                    "success": True,
-                    "type": "equation",
-                    "problem": problem,
-                    "answer": [],
-                    "steps": [
-                        f"Simplify the equation: {sp.sstr(difference)} = 0",
-                        "This is a contradiction, so no value of x satisfies the equation.",
-                    ],
-                    "step_formulas": [
-                        sp.latex(difference) + r" = 0",
-                        r"\text{No solution}",
-                    ],
-                    "verified": True,
-                    "message": "No solutions exist for this equation.",
-                }
-            # Handle square-root equations separately over the real numbers.
-            has_square_root = any(
-                power.exp in (
-                    sp.Rational(1, 2),
-                    sp.Rational(-1, 2),
-                )
-                for expression in (lhs, rhs)
-                for power in expression.atoms(sp.Pow)
-            )
-
-            if has_square_root:
+            # Apply real-domain restrictions from every sqrt().
+            for radicand in radicands:
                 try:
-                    radical_result = sp.solveset(
-                        lhs - rhs,
+                    radicand_domain = sp.solve_univariate_inequality(
+                        radicand >= 0,
+                        x,
+                        relational=False,
+                    )
+
+                    candidate_domain = sp.Intersection(
+                        allowed_domain,
+                        radicand_domain,
+                    )
+
+                    # Confirm that the result can be safely formatted.
+                    format_real_domain(candidate_domain)
+                    allowed_domain = candidate_domain
+
+                except (
+                    NotImplementedError,
+                    ValueError,
+                    TypeError,
+                ):
+                    unknown_domain = True
+
+            # Find values that make an original denominator zero.
+            for restriction in denominator_restrictions:
+                restriction_numerator = sp.together(
+                    restriction
+                ).as_numer_denom()[0]
+
+                try:
+                    restriction_solutions = sp.solveset(
+                        restriction_numerator,
                         x,
                         domain=sp.S.Reals,
                     )
+
+                    if isinstance(
+                        restriction_solutions,
+                        sp.FiniteSet,
+                    ):
+                        excluded_values.update(
+                            sp.simplify(item)
+                            for item in restriction_solutions
+                        )
+
+                    elif restriction_solutions != sp.EmptySet:
+                        unknown_restrictions = True
+
                 except (NotImplementedError, ValueError):
-                    raise ValueError(
-                        "Unable to solve this square-root equation exactly."
-                    )
+                    unknown_restrictions = True
 
-                if radical_result == sp.EmptySet:
-                    radical_solutions = []
+            excluded_values = sorted(
+                excluded_values,
+                key=sp.default_sort_key,
+            )
 
-                elif isinstance(radical_result, sp.FiniteSet):
-                    radical_solutions = sorted(
-                        radical_result,
-                        key=sp.default_sort_key,
-                    )
-
-                else:
-                    raise ValueError(
-                        "This square-root equation is not yet supported."
-                    )
-
-                valid_solutions = []
-
-                for item in radical_solutions:
-                    verification = sp.checksol(
-                        lhs - rhs,
-                        x,
-                        item,
-                    )
-
-                    if verification is False:
-                        continue
-
-                    if verification is not True:
-                        raise ValueError(
-                            "Unable to verify a square-root solution."
+            # Remove denominator-zero values from the allowed domain.
+            if not unknown_domain and not unknown_restrictions:
+                try:
+                    if excluded_values:
+                        allowed_domain = (
+                            allowed_domain
+                            - sp.FiniteSet(*excluded_values)
                         )
 
-                    denominator_invalid = False
+                    format_real_domain(allowed_domain)
 
-                    for restriction in denominator_restrictions:
-                        denominator_value = sp.simplify(
-                            restriction.subs(x, item)
-                        )
+                except (NotImplementedError, ValueError, TypeError):
+                    unknown_domain = True
 
-                        is_zero = denominator_value.equals(0)
+            unknown_constraints = (
+                unknown_domain or unknown_restrictions
+            )
 
-                        if is_zero is None:
-                            raise ValueError(
-                                "Unable to verify a denominator restriction."
-                            )
-
-                        if is_zero:
-                            denominator_invalid = True
-                            break
-
-                    if not denominator_invalid:
-                        valid_solutions.append(item)
-
+            if unknown_constraints:
                 answer = [
-                    format_value(item)
-                    for item in valid_solutions
+                    "All real values of x satisfying the original expression's domain restrictions"
                 ]
 
-                radical_steps = build_radical_equation_steps(
-                    lhs,
-                    rhs,
-                    valid_solutions,
+            elif allowed_domain == sp.EmptySet:
+                answer = [
+                    "No real values of x satisfy the original domain restrictions"
+                ]
+
+            elif allowed_domain != sp.S.Reals:
+                answer = [
+                    "All real values of x in "
+                    + format_real_domain(allowed_domain)
+                ]
+
+            elif excluded_values:
+                excluded_text = ", ".join(
+                    f"x = {format_value(item)}"
+                    for item in excluded_values
                 )
 
-                if radical_steps is None:
-                    radical_steps = build_multiple_radical_equation_steps(
-                        lhs,
-                        rhs,
-                        valid_solutions,
-                    )
+                answer = [
+                    f"All real values of x except {excluded_text}"
+                ]
 
-                if radical_steps is None:
-                    steps = []
-                    step_formulas = []
-                else:
-                    steps, step_formulas = radical_steps
+            else:
+                answer = ["All values of x"]
 
-                return {
-                    "success": True,
-                    "type": "equation",
-                    "problem": problem,
-                    "answer": answer,
-                    "answer_formulas": [
+            steps = [
+                "Simplify both sides: 0 = 0",
+            ]
+
+            step_formulas = [
+                r"0 = 0",
+            ]
+
+            if radicands and not unknown_domain:
+                domain_text = format_real_domain(allowed_domain)
+
+                steps.append(
+                    "Every square-root radicand must be non-negative. "
+                    f"The allowed real domain is {domain_text}."
+                )
+
+                step_formulas.append(
+                    r"\text{Allowed real domain: }"
+                    + sp.latex(allowed_domain)
+                )
+
+            if excluded_values:
+                excluded_text = ", ".join(
+                    f"x = {format_value(item)}"
+                    for item in excluded_values
+                )
+
+                steps.append(
+                    "Exclude these values because they make "
+                    f"an original denominator zero: {excluded_text}."
+                )
+
+                step_formulas.append(
+                    r"\text{Excluded values: } "
+                    + r",\ ".join(
                         sp.latex(item)
-                        for item in valid_solutions
-                    ],
-                    "answer_approximations": [
-                        str(sp.N(item, 10))
-                        for item in valid_solutions
-                    ],
-                    "steps": steps,
-                    "step_formulas": step_formulas,
-                    "verified": True,
-                    "message": (
-                        "Square-root equation solved successfully."
-                        if valid_solutions and steps
-                        else (
-                            "Square-root equation solved successfully. "
-                            "Detailed steps are not currently available."
-                            if valid_solutions
-                            else "No real solutions exist for this equation."
-                        )
-                    ),
-                }
+                        for item in excluded_values
+                    )
+                )
 
-            # Combine rational expressions and solve the numerator.
-            combined_equation = sp.together(lhs - rhs)
-            numerator, denominator = combined_equation.as_numer_denom()
+            if unknown_constraints:
+                steps.append(
+                    "The identity holds only where the original "
+                    "expressions are defined. The exact domain "
+                    "could not be determined."
+                )
 
-            polynomial = sp.Poly(sp.expand(numerator), x)
+                step_formulas.append(
+                    r"\text{Original expression domain required}"
+                )
 
-            solutions = get_trigonometric_cubic_roots(polynomial)
+            elif allowed_domain == sp.EmptySet:
+                steps.append(
+                    "No real values satisfy all original domain restrictions."
+                )
 
-            if solutions is None:
-                solutions = get_cardano_cubic_roots(polynomial)
+                step_formulas.append(
+                    r"\text{No real solutions}"
+                )
 
-            if solutions is None:
-                solutions = sp.solve(sp.Eq(lhs, rhs), x)
+            else:
+                steps.append(
+                    "The identity is true for every remaining "
+                    "allowed real value of x."
+                )
 
-            # Remove roots that make an original denominator zero.
+                step_formulas.append(
+                    r"\text{True for all allowed } x"
+                )
+            if unknown_constraints:
+                identity_message = (
+                    "Identity equation; the exact real domain "
+                    "could not be determined."
+                )
+            elif allowed_domain == sp.EmptySet:
+                identity_message = (
+                    "Identity equation, but no real values satisfy "
+                    "the original expression's domain restrictions."
+                )
+            else:
+                identity_message = (
+                    "Identity equation: infinitely many "
+                    "allowed real solutions."
+                )
+            return {
+                "success": True,
+                "type": "equation",
+                "problem": problem,
+                "answer": answer,
+                "steps": steps,
+                "step_formulas": step_formulas,
+                "verified": True,
+                "message": identity_message,
+            }
+
+        # Constant contradiction
+        if not difference.has(x):
+            return {
+                "success": True,
+                "type": "equation",
+                "problem": problem,
+                "answer": [],
+                "steps": [
+                    f"Simplify the equation: {sp.sstr(difference)} = 0",
+                    "This is a contradiction, so no value of x satisfies the equation.",
+                ],
+                "step_formulas": [
+                    sp.latex(difference) + r" = 0",
+                    r"\text{No solution}",
+                ],
+                "verified": True,
+                "message": "No solutions exist for this equation.",
+            }
+        # Handle square-root equations separately over the real numbers.
+        has_square_root = any(
+            power.exp in (
+                sp.Rational(1, 2),
+                sp.Rational(-1, 2),
+            )
+            for expression in (lhs, rhs)
+            for power in expression.atoms(sp.Pow)
+        )
+
+        if has_square_root:
+            try:
+                radical_result = sp.solveset(
+                    lhs - rhs,
+                    x,
+                    domain=sp.S.Reals,
+                )
+            except (NotImplementedError, ValueError):
+                raise ValueError(
+                    "Unable to solve this square-root equation exactly."
+                )
+
+            if radical_result == sp.EmptySet:
+                radical_solutions = []
+
+            elif isinstance(radical_result, sp.FiniteSet):
+                radical_solutions = sorted(
+                    radical_result,
+                    key=sp.default_sort_key,
+                )
+
+            else:
+                raise ValueError(
+                    "This square-root equation is not yet supported."
+                )
+
             valid_solutions = []
 
-            for item in solutions:
-                valid = True
+            for item in radical_solutions:
+                verification = sp.checksol(
+                    lhs - rhs,
+                    x,
+                    item,
+                )
+
+                if verification is False:
+                    continue
+
+                if verification is not True:
+                    raise ValueError(
+                        "Unable to verify a square-root solution."
+                    )
+
+                denominator_invalid = False
 
                 for restriction in denominator_restrictions:
                     denominator_value = sp.simplify(
                         restriction.subs(x, item)
                     )
 
-                    # Accept only when non-zero is established.
-                    if denominator_value.equals(0) is not False:
-                        valid = False
+                    is_zero = denominator_value.equals(0)
+
+                    if is_zero is None:
+                        raise ValueError(
+                            "Unable to verify a denominator restriction."
+                        )
+
+                    if is_zero:
+                        denominator_invalid = True
                         break
 
-                if valid:
+                if not denominator_invalid:
                     valid_solutions.append(item)
-
-            solutions = valid_solutions
 
             answer = [
                 format_value(item)
-                for item in solutions
+                for item in valid_solutions
             ]
 
-            answer_formulas = [
-                sp.latex(item)
-                for item in solutions
-            ]
-
-            answer_approximations = [
-                str(sp.N(item, 10))
-                for item in solutions
-            ]
-
-            verified = bool(solutions) and all(
-                sp.checksol(lhs - rhs, x, item) is True
-                for item in solutions
-            )
-
-            rational_steps = build_rational_equation_steps(
+            radical_steps = build_radical_equation_steps(
                 lhs,
                 rhs,
-                numerator,
-                denominator,
-                denominator_restrictions,
-                solutions,
+                valid_solutions,
             )
 
-            if rational_steps is not None:
-                steps, step_formulas = rational_steps
+            if radical_steps is None:
+                radical_steps = build_multiple_radical_equation_steps(
+                    lhs,
+                    rhs,
+                    valid_solutions,
+                )
 
+            if radical_steps is None:
+                steps = []
+                step_formulas = []
             else:
-                try:
-                    steps = build_equation_steps(
-                        lhs,
-                        rhs,
-                        solutions,
-                    )
-                except (
-                    sp.PolynomialError,
-                    ValueError,
-                    TypeError,
-                ):
-                    steps = []
-
-                try:
-                    step_formulas = build_equation_step_formulas(
-                        lhs,
-                        rhs,
-                        solutions,
-                    )
-                except (
-                    sp.PolynomialError,
-                    ValueError,
-                    TypeError,
-                ):
-                    step_formulas = []
-            detailed_steps_available = bool(steps) and (
-                len(steps) == len(step_formulas)
-            )
+                steps, step_formulas = radical_steps
 
             return {
                 "success": True,
                 "type": "equation",
                 "problem": problem,
                 "answer": answer,
-                "answer_formulas": answer_formulas,
-                "answer_approximations": answer_approximations,
+                "answer_formulas": [
+                    sp.latex(item)
+                    for item in valid_solutions
+                ],
+                "answer_approximations": [
+                    str(sp.N(item, 10))
+                    for item in valid_solutions
+                ],
                 "steps": steps,
                 "step_formulas": step_formulas,
-                "verified": verified,
+                "verified": True,
                 "message": (
-                    "Equation solved successfully."
-                    if solutions and detailed_steps_available
+                    "Square-root equation solved successfully."
+                    if valid_solutions and steps
                     else (
-                        "Equation solved, but detailed steps "
-                        "are not currently available for this equation."
-                        if solutions
-                        else "No solutions found for this equation."
+                        "Square-root equation solved successfully. "
+                        "Detailed steps are not currently available."
+                        if valid_solutions
+                        else "No real solutions exist for this equation."
                     )
                 ),
             }
 
-        # Expression simplification
-        expression = parse_math_expression(problem)
-        simplified = sp.simplify(expression)
+        # Combine rational expressions and solve the numerator.
+        combined_equation = sp.together(lhs - rhs)
+        numerator, denominator = combined_equation.as_numer_denom()
+
+        polynomial = sp.Poly(sp.expand(numerator), x)
+
+        solutions = get_trigonometric_cubic_roots(polynomial)
+
+        if solutions is None:
+            solutions = get_cardano_cubic_roots(polynomial)
+
+        if solutions is None:
+            solutions = sp.solve(sp.Eq(lhs, rhs), x)
+
+        # Remove roots that make an original denominator zero.
+        valid_solutions = []
+
+        for item in solutions:
+            valid = True
+
+            for restriction in denominator_restrictions:
+                denominator_value = sp.simplify(
+                    restriction.subs(x, item)
+                )
+
+                # Accept only when non-zero is established.
+                if denominator_value.equals(0) is not False:
+                    valid = False
+                    break
+
+            if valid:
+                valid_solutions.append(item)
+
+        solutions = valid_solutions
+
+        answer = [
+            format_value(item)
+            for item in solutions
+        ]
+
+        answer_formulas = [
+            sp.latex(item)
+            for item in solutions
+        ]
+
+        answer_approximations = [
+            str(sp.N(item, 10))
+            for item in solutions
+        ]
+
+        verified = bool(solutions) and all(
+            sp.checksol(lhs - rhs, x, item) is True
+            for item in solutions
+        )
+
+        rational_steps = build_rational_equation_steps(
+            lhs,
+            rhs,
+            numerator,
+            denominator,
+            denominator_restrictions,
+            solutions,
+        )
+
+        if rational_steps is not None:
+            steps, step_formulas = rational_steps
+
+        else:
+            try:
+                steps = build_equation_steps(
+                    lhs,
+                    rhs,
+                    solutions,
+                )
+            except (
+                sp.PolynomialError,
+                ValueError,
+                TypeError,
+            ):
+                steps = []
+
+            try:
+                step_formulas = build_equation_step_formulas(
+                    lhs,
+                    rhs,
+                    solutions,
+                )
+            except (
+                sp.PolynomialError,
+                ValueError,
+                TypeError,
+            ):
+                step_formulas = []
+        detailed_steps_available = bool(steps) and (
+            len(steps) == len(step_formulas)
+        )
 
         return {
             "success": True,
-            "type": "expression",
+            "type": "equation",
             "problem": problem,
-            "answer": str(simplified),
-            "steps": [
-                f"Original expression: {problem}",
-                f"Simplified expression: {sp.sstr(simplified)}",
-            ],
-            "verified": True,
-            "message": "Expression simplified successfully.",
+            "answer": answer,
+            "answer_formulas": answer_formulas,
+            "answer_approximations": answer_approximations,
+            "steps": steps,
+            "step_formulas": step_formulas,
+            "verified": verified,
+            "message": (
+                "Equation solved successfully."
+                if solutions and detailed_steps_available
+                else (
+                    "Equation solved, but detailed steps "
+                    "are not currently available for this equation."
+                    if solutions
+                    else "No solutions found for this equation."
+                )
+            ),
         }
 
-    except ValueError:
-        raise
+    # Expression simplification
+    expression = parse_math_expression(problem)
+    simplified = sp.simplify(expression)
 
-    except Exception:
-        raise ValueError(
-            "Unable to solve this problem. Please check your expression."
-        )
+    return {
+        "success": True,
+        "type": "expression",
+        "problem": problem,
+        "answer": str(simplified),
+        "steps": [
+            f"Original expression: {problem}",
+            f"Simplified expression: {sp.sstr(simplified)}",
+        ],
+        "verified": True,
+        "message": "Expression simplified successfully.",
+    }

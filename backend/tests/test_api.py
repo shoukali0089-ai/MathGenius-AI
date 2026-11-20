@@ -3,7 +3,6 @@ from fastapi.testclient import TestClient
 
 from backend.app.main import app
 
-
 client = TestClient(app)
 
 
@@ -133,3 +132,24 @@ def test_inconsistent_equation_api():
     assert data["verified"] is True
     assert "no solutions" in data["message"].lower()
     assert len(data["steps"]) == len(data["step_formulas"])
+
+
+def test_unexpected_solver_error_returns_generic_500(monkeypatch):
+    def raise_unexpected_error(problem):
+        raise RuntimeError("secret internal detail")
+
+    monkeypatch.setattr(
+        "backend.app.main.solve_math",
+        raise_unexpected_error,
+    )
+
+    response = client.post(
+        "/api/solve",
+        json={"problem": "2+2"},
+    )
+
+    assert response.status_code == 500
+    assert response.json()["detail"] == (
+        "An internal error occurred while solving the problem."
+    )
+    assert "secret internal detail" not in response.text

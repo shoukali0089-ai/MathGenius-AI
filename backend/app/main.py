@@ -1,9 +1,12 @@
 
+import logging
+
 from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel, Field
 
 from backend.app.math_engine import solve_math
 
+logger = logging.getLogger(__name__)
 
 app = FastAPI(
     title="MathGenius AI",
@@ -37,8 +40,14 @@ def health():
 def solve(request: SolveRequest):
     try:
         return solve_math(request.problem)
-    except ValueError as error:
+    except (ValueError, TypeError) as error:
         raise HTTPException(
             status_code=400,
             detail=str(error)
+        )
+    except Exception:
+        logger.exception("Unexpected error while solving math problem.")
+        raise HTTPException(
+            status_code=500,
+            detail="An internal error occurred while solving the problem."
         )

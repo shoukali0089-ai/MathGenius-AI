@@ -136,6 +136,11 @@ def test_invalid_input():
         solve_math("hello")
 
 
+def test_non_string_problem_raises_type_error():
+    with pytest.raises(TypeError, match="Problem must be text."):
+        solve_math(123)
+
+
 def test_empty_input():
     with pytest.raises(ValueError):
         solve_math("")

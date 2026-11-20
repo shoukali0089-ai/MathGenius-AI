@@ -6,3 +6,11 @@ __pycache__/
 .env.*
 .pytest_cache/
 .mypy_cache/
+
+# Test coverage reports
+.coverage
+.coverage.*
+htmlcov/
+
+# Python lint cache
+.ruff_cache/
