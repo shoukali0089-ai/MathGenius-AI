@@ -1,4 +1,3 @@
-
 import pytest
 import sympy as sp
 
@@ -149,6 +148,8 @@ def test_empty_input():
 def test_problem_too_long():
     with pytest.raises(ValueError):
         solve_math("1" * 201)
+
+
 @pytest.mark.parametrize(
     "problem",
     [
@@ -163,6 +164,8 @@ def test_division_by_zero(problem):
         match="Division by zero is not allowed.",
     ):
         solve_math(problem)
+
+
 def test_cubic_equation_with_complex_roots_has_detailed_steps():
     result = solve_math("x^3+1=0")
 
@@ -188,9 +191,7 @@ def test_square_root_identity_respects_closed_domain():
     result = solve_math("sqrt(x)=sqrt(x)")
 
     assert result["success"] is True
-    assert result["answer"] == [
-        "All real values of x in [0, ∞)"
-    ]
+    assert result["answer"] == ["All real values of x in [0, ∞)"]
     assert result["verified"] is True
     assert len(result["steps"]) == len(result["step_formulas"])
 
@@ -199,9 +200,7 @@ def test_square_root_identity_excludes_zero_denominator():
     result = solve_math("sqrt(x)/sqrt(x)=1")
 
     assert result["success"] is True
-    assert result["answer"] == [
-        "All real values of x in (0, ∞)"
-    ]
+    assert result["answer"] == ["All real values of x in (0, ∞)"]
     assert result["verified"] is True
     assert len(result["steps"]) == len(result["step_formulas"])
 
@@ -210,9 +209,7 @@ def test_shifted_square_root_identity_respects_domain():
     result = solve_math("sqrt(x+1)/sqrt(x+1)=1")
 
     assert result["success"] is True
-    assert result["answer"] == [
-        "All real values of x in (-1, ∞)"
-    ]
+    assert result["answer"] == ["All real values of x in (-1, ∞)"]
     assert result["verified"] is True
     assert len(result["steps"]) == len(result["step_formulas"])
 
@@ -247,6 +244,7 @@ def test_repeated_quadratic_root():
     assert result["verified"] is True
     assert len(result["steps"]) == len(result["step_formulas"])
 
+
 def test_cubic_equation_with_three_rational_roots():
     result = solve_math("x^3-6x^2+11x-6=0")
 
@@ -267,15 +265,13 @@ def test_cubic_equation_with_repeated_root():
     assert len(result["steps"]) > 0
     assert len(result["steps"]) == len(result["step_formulas"])
 
+
 def test_cubic_triple_root_multiplicity():
     result = solve_math("x^3-3x^2+3x-1=0")
 
     assert result["answer"] == ["1"]
     assert result["verified"] is True
-    assert any(
-        "multiplicity 3" in step.lower()
-        for step in result["steps"]
-    )
+    assert any("multiplicity 3" in step.lower() for step in result["steps"])
     assert len(result["steps"]) == len(result["step_formulas"])
 
 
@@ -284,10 +280,7 @@ def test_cubic_double_root_multiplicity():
 
     assert result["answer"] == ["1", "2"]
     assert result["verified"] is True
-    assert any(
-        "multiplicity 2" in step.lower()
-        for step in result["steps"]
-    )
+    assert any("multiplicity 2" in step.lower() for step in result["steps"])
     assert len(result["steps"]) == len(result["step_formulas"])
 
 
@@ -313,10 +306,7 @@ def test_cubic_equation_with_three_distinct_irrational_real_roots():
     assert len(result["step_formulas"]) == 9
     assert "successfully" in result["message"].lower()
 
-    assert any(
-        "cos" in formula
-        for formula in result["step_formulas"]
-    )
+    assert any("cos" in formula for formula in result["step_formulas"])
 
 
 def test_cubic_equation_with_one_real_and_two_complex_roots():
@@ -333,10 +323,20 @@ def test_cubic_equation_with_one_real_and_two_complex_roots():
     assert result["answer_approximations"][0].startswith("-0.682")
     assert "I" in result["answer_approximations"][1]
     assert "I" in result["answer_approximations"][2]
-    assert any(
-        "Cardano" in step
-        for step in result["steps"]
-    )
+    assert any("Cardano" in step for step in result["steps"])
+
+    assert len(result["answer_formulas"]) == 3
+
+    x = sp.Symbol("x")
+    polynomial = x**3 + x + 1
+
+    for root_text in result["answer"]:
+        root = sp.sympify(root_text)
+        residual = sp.N(polynomial.subs(x, root), 30)
+
+        assert abs(complex(residual)) < 1e-25
+
+
 def test_rational_equation_with_linear_denominator():
     result = solve_math("1/(x-1)=2")
 
@@ -357,12 +357,11 @@ def test_rational_equation_with_two_denominators():
     assert len(result["answer"]) == 2
     assert result["verified"] is True
 
+
 def test_rational_identity_excludes_zero_denominator():
     result = solve_math("(x-1)/(x-1)=1")
 
-    assert result["answer"] == [
-        "All real values of x in (-∞, 1) ∪ (1, ∞)"
-    ]
+    assert result["answer"] == ["All real values of x in (-∞, 1) ∪ (1, ∞)"]
     assert result["verified"] is True
     assert len(result["steps"]) == len(result["step_formulas"])
 
@@ -374,10 +373,7 @@ def test_factorable_quartic_equation_has_detailed_steps():
     assert result["verified"] is True
     assert len(result["steps"]) > 0
     assert len(result["steps"]) == len(result["step_formulas"])
-    assert any(
-        "Factorize the polynomial" in step
-        for step in result["steps"]
-    )
+    assert any("Factorize the polynomial" in step for step in result["steps"])
 
 
 def test_rational_equation_with_cancelled_factor_has_detailed_steps():
@@ -387,15 +383,9 @@ def test_rational_equation_with_cancelled_factor_has_detailed_steps():
     assert result["answer"] == ["-1"]
     assert result["verified"] is True
 
-    assert any(
-        "x cannot equal 1" in step
-        for step in result["steps"]
-    )
+    assert any("x cannot equal 1" in step for step in result["steps"])
 
-    assert any(
-        "Reject x = 1" in step
-        for step in result["steps"]
-    )
+    assert any("Reject x = 1" in step for step in result["steps"])
 
     assert len(result["steps"]) == len(result["step_formulas"])
 
@@ -408,29 +398,18 @@ def test_rational_equation_linear_solution_has_detailed_steps():
     assert len(result["steps"]) > 0
     assert len(result["steps"]) == len(result["step_formulas"])
 
-    assert any(
-        "Accept x = 3/2" in step
-        for step in result["steps"]
-    )
+    assert any("Accept x = 3/2" in step for step in result["steps"])
 
 
 def test_rational_equation_rejects_only_candidate_due_to_denominator():
-    result = solve_math(
-        "1/(x-1)=1/(x-1)+(x-1)"
-    )
+    result = solve_math("1/(x-1)=1/(x-1)+(x-1)")
 
     assert result["answer"] == []
     assert result["verified"] is False
 
-    assert any(
-        "Reject x = 1" in step
-        for step in result["steps"]
-    )
+    assert any("Reject x = 1" in step for step in result["steps"])
 
-    assert any(
-        "No candidates satisfy" in step
-        for step in result["steps"]
-    )
+    assert any("No candidates satisfy" in step for step in result["steps"])
 
     assert len(result["steps"]) == len(result["step_formulas"])
 
@@ -442,10 +421,9 @@ def test_factorable_quartic_equation_with_repeated_roots():
     assert result["verified"] is True
     assert len(result["steps"]) > 0
     assert len(result["steps"]) == len(result["step_formulas"])
-    assert any(
-        "multiplicity 2" in step
-        for step in result["steps"]
-    )
+    assert any("multiplicity 2" in step for step in result["steps"])
+
+
 def test_biquadratic_quartic_equation_has_detailed_steps():
     result = solve_math("x^4 - 2 = 0")
 
@@ -453,10 +431,9 @@ def test_biquadratic_quartic_equation_has_detailed_steps():
     assert result["verified"] is True
     assert len(result["steps"]) > 0
     assert len(result["steps"]) == len(result["step_formulas"])
-    assert any(
-        "substitute y = x^2" in step.lower()
-        for step in result["steps"]
-    )
+    assert any("substitute y = x^2" in step.lower() for step in result["steps"])
+
+
 def test_biquadratic_quartic_equation_with_complex_roots():
     result = solve_math("x^4 + 1 = 0")
 
@@ -464,11 +441,9 @@ def test_biquadratic_quartic_equation_with_complex_roots():
     assert result["verified"] is True
     assert len(result["steps"]) > 0
     assert len(result["steps"]) == len(result["step_formulas"])
-    assert any(
-        "substitute y = x^2" in step.lower()
-        for step in result["steps"]
-    )
+    assert any("substitute y = x^2" in step.lower() for step in result["steps"])
     assert all("I" in answer for answer in result["answer"])
+
 
 def test_simple_square_root_equation_has_detailed_steps():
     result = solve_math("sqrt(x+5)=4")
@@ -478,10 +453,7 @@ def test_simple_square_root_equation_has_detailed_steps():
     assert result["verified"] is True
     assert len(result["steps"]) > 0
     assert len(result["steps"]) == len(result["step_formulas"])
-    assert any(
-        "Square both sides" in step
-        for step in result["steps"]
-    )
+    assert any("Square both sides" in step for step in result["steps"])
     assert result["steps"][-1] == "Final solution: x = 11."
 
 
@@ -491,10 +463,7 @@ def test_square_root_equation_rejects_extraneous_root_in_steps():
     assert result["answer"] == ["3"]
     assert result["verified"] is True
     assert len(result["steps"]) == len(result["step_formulas"])
-    assert any(
-        "Reject x = 0" in step
-        for step in result["steps"]
-    )
+    assert any("Reject x = 0" in step for step in result["steps"])
     assert result["steps"][-1] == "Final solution: x = 3."
 
 
@@ -506,10 +475,7 @@ def test_square_root_equation_with_no_solution_has_correct_steps():
         "The right-hand side is a negative constant.",
         "Therefore, no real solutions exist.",
     ]
-    assert not any(
-        "Square both sides" in step
-        for step in result["steps"]
-    )
+    assert not any("Square both sides" in step for step in result["steps"])
     assert result["answer"] == []
     assert result["verified"] is True
     assert len(result["steps"]) > 0
@@ -526,10 +492,7 @@ def test_equal_square_roots_have_detailed_steps():
     assert result["verified"] is True
     assert len(result["steps"]) > 0
     assert len(result["steps"]) == len(result["step_formulas"])
-    assert any(
-        "domain conditions" in step.lower()
-        for step in result["steps"]
-    )
+    assert any("domain conditions" in step.lower() for step in result["steps"])
     assert result["steps"][-1] == "Final solution: x = 3."
 
 
@@ -551,10 +514,7 @@ def test_sum_of_two_square_roots_has_detailed_steps(
     assert result["verified"] is True
     assert len(result["steps"]) > 0
     assert len(result["steps"]) == len(result["step_formulas"])
-    assert any(
-        "Square both sides" in step
-        for step in result["steps"]
-    )
+    assert any("Square both sides" in step for step in result["steps"])
     assert result["steps"][-1].startswith("Final solution:")
 
 
@@ -565,15 +525,10 @@ def test_two_square_root_formulas_show_multiplication_signs():
 
     formulas = result["step_formulas"]
 
-    assert any(
-        r"2\cdot 3\cdot" in formula
-        for formula in formulas
-    )
-    assert any(
-        r"4\cdot 9\cdot" in formula
-        for formula in formulas
-    )
+    assert any(r"2\cdot 3\cdot" in formula for formula in formulas)
+    assert any(r"4\cdot 9\cdot" in formula for formula in formulas)
     assert len(result["steps"]) == len(formulas)
+
 
 def test_zero_rhs_multiple_radicals_with_boundary_solution():
     result = solve_math("sqrt(x)+sqrt(x)=0")
@@ -584,10 +539,7 @@ def test_zero_rhs_multiple_radicals_with_boundary_solution():
     assert len(result["steps"]) > 0
     assert len(result["steps"]) == len(result["step_formulas"])
     assert result["steps"][0].startswith("Both square-root terms")
-    assert any(
-        r"2 \sqrt{x}=0" in formula
-        for formula in result["step_formulas"]
-    )
+    assert any(r"2 \sqrt{x}=0" in formula for formula in result["step_formulas"])
     assert result["steps"][-1] == "Final solution: x = 0."
 
 
@@ -599,18 +551,12 @@ def test_zero_rhs_multiple_radicals_without_common_zero():
     assert result["verified"] is True
     assert len(result["steps"]) > 0
     assert len(result["steps"]) == len(result["step_formulas"])
-    assert any(
-        "Set both radicands equal to zero" in step
-        for step in result["steps"]
-    )
+    assert any("Set both radicands equal to zero" in step for step in result["steps"])
     assert any(
         r"x=0" in formula and r"x + 1=0" in formula
         for formula in result["step_formulas"]
     )
-    assert any(
-        "Reject x = 0" in step
-        for step in result["steps"]
-    )
+    assert any("Reject x = 0" in step for step in result["steps"])
     assert "no real solutions exist" in result["steps"][-1].lower()
 
 
@@ -622,13 +568,9 @@ def test_multiple_radicals_reject_extraneous_candidate_and_format_radicand():
     assert result["verified"] is True
 
     assert any(
-        "candidate solutions are: 0, 24" in step.lower()
-        for step in result["steps"]
+        "candidate solutions are: 0, 24" in step.lower() for step in result["steps"]
     )
-    assert any(
-        "Reject x = 24" in step
-        for step in result["steps"]
-    )
+    assert any("Reject x = 24" in step for step in result["steps"])
     assert result["steps"][-1] == "Final solution: x = 0."
 
     assert len(result["steps"]) == len(result["step_formulas"])
@@ -659,15 +601,9 @@ def test_factorable_cubic_answer_matches_factorization_steps():
     assert set(result["answer_formulas"]) == expected_formulas
     assert result["verified"] is True
 
-    assert any(
-        "x = 1" in step
-        for step in result["steps"]
-    )
+    assert any("x = 1" in step for step in result["steps"])
 
-    assert any(
-        "x = I or x = -I" in step
-        for step in result["steps"]
-    )
+    assert any("x = I or x = -I" in step for step in result["steps"])
 
     assert any(
         "x = i" in formula and "x = - i" in formula
