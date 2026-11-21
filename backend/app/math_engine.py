@@ -223,6 +223,48 @@ def format_substitution(shift) -> str:
 
     return f"x = t - {format_value(shift)}"
 
+
+def get_factorized_cubic_roots(polynomial):
+    """Return distinct exact roots when a cubic splits into linear/quadratic factors."""
+
+    if polynomial.degree() != 3:
+        return None
+
+    factor_data = sp.factor_list(polynomial.as_expr())[1]
+
+    total_degree = sum(
+        sp.Poly(factor, x).degree() * multiplicity
+        for factor, multiplicity in factor_data
+    )
+
+    if total_degree != 3:
+        return None
+
+    roots = []
+
+    for factor, multiplicity in factor_data:
+        factor_poly = sp.Poly(factor, x)
+
+        if factor_poly.degree() not in (1, 2):
+            return None
+
+        factor_roots = sp.solve(factor_poly.as_expr(), x)
+
+        if len(factor_roots) != factor_poly.degree():
+            return None
+
+        for root in factor_roots:
+            simplified_root = sp.simplify(root)
+
+            if not any(
+                sp.simplify(simplified_root - existing_root) == 0
+                for existing_root in roots
+            ):
+                roots.append(simplified_root)
+
+    return sorted(roots, key=sp.default_sort_key)
+
+
 def get_trigonometric_cubic_roots(polynomial):
     """Return exact trigonometric roots for cubics with three distinct real roots."""
 
@@ -2331,7 +2373,10 @@ def solve_math(problem: str) -> dict:
 
         polynomial = sp.Poly(sp.expand(numerator), x)
 
-        solutions = get_trigonometric_cubic_roots(polynomial)
+        solutions = get_factorized_cubic_roots(polynomial)
+
+        if solutions is None:
+            solutions = get_trigonometric_cubic_roots(polynomial)
 
         if solutions is None:
             solutions = get_cardano_cubic_roots(polynomial)

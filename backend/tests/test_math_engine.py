@@ -637,3 +637,41 @@ def test_multiple_radicals_reject_extraneous_candidate_and_format_radicand():
         r"4\cdot 4\cdot \left(2 x + 1\right)" in formula
         for formula in result["step_formulas"]
     )
+
+
+def test_factorable_cubic_answer_matches_factorization_steps():
+    result = solve_math("x^3-x^2+x-1=0")
+
+    expected_roots = {
+        "1",
+        "I",
+        "-I",
+    }
+
+    expected_formulas = {
+        sp.latex(sp.Integer(1)),
+        sp.latex(sp.I),
+        sp.latex(-sp.I),
+    }
+
+    assert result["success"] is True
+    assert set(result["answer"]) == expected_roots
+    assert set(result["answer_formulas"]) == expected_formulas
+    assert result["verified"] is True
+
+    assert any(
+        "x = 1" in step
+        for step in result["steps"]
+    )
+
+    assert any(
+        "x = I or x = -I" in step
+        for step in result["steps"]
+    )
+
+    assert any(
+        "x = i" in formula and "x = - i" in formula
+        for formula in result["step_formulas"]
+    )
+
+    assert len(result["steps"]) == len(result["step_formulas"])
