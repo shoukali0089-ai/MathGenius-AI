@@ -214,15 +214,16 @@ def format_real_domain(domain) -> str:
         )
 
     raise ValueError("Unable to format the calculated real domain.")
-
 def format_substitution(shift) -> str:
     shift = sp.simplify(shift)
 
     if shift == 0:
         return "x = t"
 
-    return f"x = t - {format_value(shift)}"
+    if shift.is_negative:
+        return f"x = t + {format_value(-shift)}"
 
+    return f"x = t - {format_value(shift)}"
 
 def get_factorized_cubic_roots(polynomial):
     """Return distinct exact roots when a cubic splits into linear/quadratic factors."""
@@ -1130,7 +1131,7 @@ def build_equation_steps(lhs, rhs, solutions):
                 f"Calculate Cardano's discriminant: delta = (q/2)^2 + (p/3)^3 = {format_value(delta)}.",
                 "Since delta is positive, the equation has one real root and two non-real complex conjugate roots.",
                 f"Calculate u = cube_root(-q/2 + sqrt(delta)) = {format_value(u)} and v = cube_root(-q/2 - sqrt(delta)) = {format_value(v)}, using real cube roots.",
-                f"The real root is x1 = u + v - {format_value(shift)} = {format_value(cardano_roots[0])}.",
+                f"The real root is x1 = {format_value(sp.Symbol('u') + sp.Symbol('v') - shift)} = {format_value(cardano_roots[0])}.",
                 f"Using omega = {format_value(omega)}, the two complex roots are x2 = {format_value(cardano_roots[1])} and x3 = {format_value(cardano_roots[2])}.",
                 "Therefore, the three solutions are: "
                 + "; ".join(format_value(root) for root in cardano_roots)
@@ -1551,10 +1552,25 @@ def build_equation_step_formulas(lhs, rhs, solutions):
 
             shift = sp.simplify(b / (3 * a))
             omega = (-1 + sp.sqrt(3) * sp.I) / 2
+            t_symbol = sp.Symbol("t")
+            u_symbol = sp.Symbol("u")
+            v_symbol = sp.Symbol("v")
+            omega_symbol = sp.Symbol("omega")
 
+            x2_expression = (
+                omega_symbol * u_symbol
+                + omega_symbol**2 * v_symbol
+                - shift
+            )
+
+            x3_expression = (
+                omega_symbol**2 * u_symbol
+                + omega_symbol * v_symbol
+                - shift
+            )
             return [
                 sp.latex(polynomial.as_expr()) + r" = 0",
-                (r"x = t" if shift == 0 else r"x = t - " + sp.latex(shift)),
+                r"x = " + sp.latex(t_symbol - shift),
                 r"t^3 + pt + q = 0,\quad p = "
                 + sp.latex(p) + r",\quad q = " + sp.latex(q),
                 r"\Delta = \left(\frac{q}{2}\right)^2"
@@ -1562,17 +1578,17 @@ def build_equation_step_formulas(lhs, rhs, solutions):
                 + sp.latex(delta),
                 (
                     r"\Delta > 0 \quad \Rightarrow \quad "
-                    r"\text{one real root and two complex roots}"
+                    r"\text{one real root and two non-real complex conjugate roots}"
                 ),
-                r"u = \sqrt[3]{-\frac{q}{2}+\sqrt{\Delta}},"
-                + r"\quad v = \sqrt[3]{-\frac{q}{2}-\sqrt{\Delta}}",
-                r"x_1 = u + v - " + sp.latex(shift)
-                + r" = " + sp.latex(cardano_roots[0]),
+                r"u = \operatorname{cbrt}\left(-\frac{q}{2}+\sqrt{\Delta}\right),"
+                + r"\quad v = \operatorname{cbrt}\left(-\frac{q}{2}-\sqrt{\Delta}\right)",
+                r"x_1 = "
+                + sp.latex(u_symbol + v_symbol - shift)
+                + r" = "
+                + sp.latex(cardano_roots[0]),
                 r"\omega = " + sp.latex(omega)
-                + r",\quad x_2 = \omega u + \omega^2 v - "
-                + sp.latex(shift)
-                + r",\quad x_3 = \omega^2 u + \omega v - "
-                + sp.latex(shift),
+                + r",\quad x_2 = " + sp.latex(x2_expression)
+                + r",\quad x_3 = " + sp.latex(x3_expression),
                 r"x = " + r",\quad x = ".join(
                     sp.latex(root) for root in cardano_roots
                 ),

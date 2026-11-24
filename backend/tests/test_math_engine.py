@@ -1,7 +1,11 @@
 import pytest
 import sympy as sp
 
-from backend.app.math_engine import parse_math_expression, solve_math
+from backend.app.math_engine import (
+    format_substitution,
+    parse_math_expression,
+    solve_math,
+)
 
 
 def test_square_root_expression_parsing():
@@ -308,6 +312,36 @@ def test_cubic_equation_with_three_distinct_irrational_real_roots():
 
     assert any("cos" in formula for formula in result["step_formulas"])
 
+@pytest.mark.parametrize(
+    ("shift", "expected"),
+    [
+        (0, "x = t"),
+        (sp.Rational(-5, 6), "x = t + 5/6"),
+        (sp.Rational(2, 3), "x = t - 2/3"),
+    ],
+)
+def test_cardano_substitution_formats_shift_correctly(shift, expected):
+    assert format_substitution(shift) == expected
+
+
+def test_cardano_explanation_formats_negative_shift_correctly():
+    result = solve_math("2*x^3-5*x^2+7*x-11=0")
+
+    assert result["success"] is True
+    assert result["verified"] is True
+    assert "x = t + 5/6" in result["steps"][1]
+    assert r"x = t + \frac{5}{6}" in result["step_formulas"][1]
+    assert len(result["steps"]) == len(result["step_formulas"])
+    assert "u + v + 5/6" in result["steps"][6]
+    assert r"u + v + \frac{5}{6}" in result["step_formulas"][6]
+    assert r"\frac{5}{6}" in result["step_formulas"][7]
+
+def test_cardano_formula_explains_non_real_conjugate_roots():
+    result = solve_math("x^3+x+1=0")
+
+    assert "non-real complex conjugate roots" in result["steps"][4]
+    assert "non-real complex conjugate roots" in result["step_formulas"][4]
+    assert r"\operatorname{cbrt}" in result["step_formulas"][5]
 
 def test_cubic_equation_with_one_real_and_two_complex_roots():
     result = solve_math("x^3+x+1=0")
