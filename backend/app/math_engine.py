@@ -1090,7 +1090,7 @@ def build_equation_steps(lhs, rhs, solutions):
                 f"Use the trigonometric substitution t = {format_value(amplitude)} cos(theta), where cos(3*theta) = {format_value(cosine_value)}.",
                 f"The angle is theta = {format_value(angle)} radians.",
                 "The three roots are obtained by using k = 0, 1, 2 in the trigonometric formula.",
-                "Therefore, the three solutions are: "
+                "The three solutions in ascending numerical order are: "
                 + "; ".join(format_value(root) for root in trig_roots)
                 + ".",
             ])
@@ -1526,7 +1526,8 @@ def build_equation_step_formulas(lhs, rhs, solutions):
                 r"t_k = " + sp.latex(amplitude)
                 + r"\cos\left(\theta - \frac{2k\pi}{3}\right),"
                 + r"\quad k = 0,1,2",
-                r"x = " + r",\quad x = ".join(
+                r"\text{Ascending numerical order:}\quad x = "
+                + r",\quad x = ".join(
                     sp.latex(root) for root in trig_roots
                 ),
             ]

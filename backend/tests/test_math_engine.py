@@ -312,6 +312,16 @@ def test_cubic_equation_with_three_distinct_irrational_real_roots():
 
     assert any("cos" in formula for formula in result["step_formulas"])
 
+
+def test_trigonometric_explanation_states_roots_are_sorted():
+    result = solve_math("x^3-3x+1=0")
+    assert result["success"] is True
+    assert result["verified"] is True
+    assert "ascending numerical order" in result["steps"][8].lower()
+    assert "ascending numerical order" in result["step_formulas"][8].lower()
+    assert len(result["steps"]) == len(result["step_formulas"])
+
+
 def test_trigonometric_formula_formats_negative_shift_correctly():
     result = solve_math("x^3-6*x^2+9*x-1=0")
 
