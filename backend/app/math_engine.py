@@ -1509,7 +1509,7 @@ def build_equation_step_formulas(lhs, rhs, solutions):
 
             return [
                 sp.latex(polynomial.as_expr()) + r" = 0",
-                (r"x = t" if shift == 0 else r"x = t - " + sp.latex(shift)),
+                r"x = " + sp.latex(sp.Symbol("t") - shift),
                 r"t^3 + pt + q = 0,\quad p = "
                 + sp.latex(p) + r",\quad q = " + sp.latex(q),
                 r"D = -4p^3 - 27q^2 = "
